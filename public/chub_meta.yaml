@@ -25,3 +25,6 @@ config_schema:
   required: []
 github_path: 'https://github.com/glusyy/grok-ani-affection-system'
 
+
+extension_id: 'grok-ani-affection-system-f8addfa358f3'
+
