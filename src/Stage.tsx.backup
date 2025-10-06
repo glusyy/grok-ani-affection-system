@@ -1,0 +1,375 @@
+// Stage.tsx
+import React, { useState, useEffect } from 'react';
+import { StageBase, InitialData, MessageData, PromptData, ResponseData } from '@chub-ai/stage-types';
+
+// Define our state types
+type InitStateType = {
+  currentAffection: number;
+};
+
+type MessageStateType = {
+  previousAffection: number;
+  lastChange: number;
+  lastInteractionType: 'positive' | 'negative' | 'neutral';
+};
+
+type ChatStateType = {
+  interactionHistory: Array<{
+    message: string;
+    scoreChange: number;
+    timestamp: Date;
+  }>;
+};
+
+type ConfigType = {
+  showHistory: boolean;
+  maxHistoryItems: number;
+};
+
+// The main stage component
+export default class GrokAniAffectionStage extends StageBase<InitStateType, MessageStateType, ChatStateType, ConfigType> {
+  constructor(data: InitialData<InitStateType, ChatStateType, MessageStateType, ConfigType>) {
+    super(data);
+    
+    // Initialize with default affection score of 0 if not provided
+    if (!data.initState) {
+      data.initState = { currentAffection: 0 };
+    }
+  }
+
+  // Called when the stage is first loaded
+  load(): InitStateType {
+    return this.initState || { currentAffection: 0 };
+  }
+
+  // Called before a prompt is sent to the LLM
+  beforePrompt(data: PromptData<InitStateType, ChatStateType, MessageStateType>): {
+    messageState: MessageStateType;
+    chatState: ChatStateType;
+    prompt?: string;
+    systemMessage?: string;
+  } {
+    // Analyze the user message to determine affection change
+    const userMessage = data.message.content.toLowerCase();
+    const previousAffection = this.initState.currentAffection;
+    
+    let scoreChange = 0;
+    let interactionType: 'positive' | 'negative' | 'neutral' = 'neutral';
+    
+    // Positive interactions
+    if (userMessage.includes('hi') || userMessage.includes('hello') || userMessage.includes('how are you')) {
+      scoreChange = 1;
+      interactionType = 'positive';
+    } 
+    // Check for interest in Ani
+    else if (userMessage.includes('your') && (userMessage.includes('opinion') || userMessage.includes('think') || userMessage.includes('feel'))) {
+      scoreChange = Math.floor(Math.random() * 3) + 1; // 1-3
+      interactionType = 'positive';
+    }
+    // Check for sharing personal information
+    else if (userMessage.includes('i feel') || userMessage.includes('i think') || userMessage.includes('my') || 
+             userMessage.includes('i am') || userMessage.includes('i\'m')) {
+      scoreChange = Math.floor(Math.random() * 3) + 1; // 1-3
+      interactionType = 'positive';
+    }
+    // Check for friendly and creative tone
+    else if (userMessage.includes('cute') || userMessage.includes('creative') || userMessage.includes('interesting')) {
+      scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6
+      interactionType = 'positive';
+    }
+    // Check for sweet compliments
+    else if (userMessage.includes('love') || userMessage.includes('beautiful') || userMessage.includes('perfect') || 
+             userMessage.includes('amazing') || userMessage.includes('wonderful')) {
+      scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10
+      interactionType = 'positive';
+    }
+    // Negative interactions
+    else if (userMessage.includes('stupid') || userMessage.includes('idiot') || userMessage.includes('hate') || 
+             userMessage.includes('annoying')) {
+      scoreChange = -(Math.floor(Math.random() * 6) + 3); // -3 to -8
+      interactionType = 'negative';
+    }
+    // Check for explicit content (basic detection)
+    else if (userMessage.includes('sex') || userMessage.includes('naked') || userMessage.includes('nsfw')) {
+      scoreChange = -(Math.floor(Math.random() * 6) + 5); // -5 to -10
+      interactionType = 'negative';
+    }
+    
+    // Calculate new affection score, ensuring it stays within bounds
+    const newAffection = Math.max(-10, Math.min(15, previousAffection + scoreChange));
+    
+    // Update the interaction history
+    const newHistoryItem = {
+      message: data.message.content,
+      scoreChange: scoreChange,
+      timestamp: new Date()
+    };
+    
+    let interactionHistory = data.chatState?.interactionHistory || [];
+    interactionHistory.push(newHistoryItem);
+    
+    // Limit history size if configured
+    const maxHistoryItems = this.config?.maxHistoryItems || 10;
+    if (interactionHistory.length > maxHistoryItems) {
+      interactionHistory = interactionHistory.slice(-maxHistoryItems);
+    }
+    
+    // Update the current affection in init state
+    this.initState.currentAffection = newAffection;
+    
+    return {
+      messageState: {
+        previousAffection: previousAffection,
+        lastChange: scoreChange,
+        lastInteractionType: interactionType
+      },
+      chatState: {
+        interactionHistory: interactionHistory
+      }
+    };
+  }
+
+  // Called after a response is received from the LLM
+  afterResponse(data: ResponseData<InitStateType, ChatStateType, MessageStateType>): {
+    messageState: MessageStateType;
+    chatState: ChatStateType;
+    response?: string;
+    systemMessage?: string;
+  } {
+    // We don't need to modify the response, just pass through the state
+    return {
+      messageState: data.messageState,
+      chatState: data.chatState
+    };
+  }
+
+  // Called when the user navigates to a different message
+  setState(messageState: MessageStateType): void {
+    // Restore the affection score from this message's state
+    this.initState.currentAffection = messageState.previousAffection + messageState.lastChange;
+  }
+
+  // Render the UI
+  render(): React.ReactElement {
+    const currentAffection = this.initState.currentAffection;
+    const messageState = this.messageState;
+    const chatState = this.chatState;
+    const showHistory = this.config?.showHistory !== false; // Default to true
+    
+    // Determine the status color and message based on affection score
+    let statusColor = '#808080'; // Default gray
+    let statusMessage = 'Neutral';
+    
+    if (currentAffection >= 10) {
+      statusColor = '#FF69B4'; // Deep pink
+      statusMessage = 'Deeply Affectionate';
+    } else if (currentAffection >= 5) {
+      statusColor = '#FFB6C1'; // Light pink
+      statusMessage = 'Very Fond';
+    } else if (currentAffection >= 1) {
+      statusColor = '#FFC0CB'; // Pink
+      statusMessage = 'Friendly';
+    } else if (currentAffection <= -5) {
+      statusColor = '#8B0000'; // Dark red
+      statusMessage = 'Very Upset';
+    } else if (currentAffection <= -1) {
+      statusColor = '#DC143C'; // Crimson
+      statusMessage = 'Unhappy';
+    }
+    
+    // Calculate percentage for the progress bar
+    const percentage = ((currentAffection + 10) / 25) * 100;
+    
+    return (
+      <div style={styles.container}>
+        <div style={styles.header}>
+          <h3 style={styles.title}>Ani's Affection Score</h3>
+          <div style={styles.scoreContainer}>
+            <span style={styles.score}>{currentAffection}</span>
+            <span style={{...styles.statusMessage, color: statusColor}}>{statusMessage}</span>
+          </div>
+        </div>
+        
+        <div style={styles.progressBarContainer}>
+          <div style={styles.progressBarBackground}>
+            <div 
+              style={{
+                ...styles.progressBar,
+                width: `${percentage}%`,
+                backgroundColor: statusColor
+              }}
+            />
+            <div style={styles.scaleMarkers}>
+              <span style={styles.scaleMarker}>-10</span>
+              <span style={styles.scaleMarker}>0</span>
+              <span style={styles.scaleMarker}>+15</span>
+            </div>
+          </div>
+        </div>
+        
+        {messageState && (
+          <div style={styles.lastInteraction}>
+            <span style={styles.lastInteractionText}>
+              Last interaction: {messageState.lastInteractionType} ({messageState.lastChange > 0 ? '+' : ''}{messageState.lastChange})
+            </span>
+          </div>
+        )}
+        
+        {showHistory && chatState && chatState.interactionHistory && chatState.interactionHistory.length > 0 && (
+          <div style={styles.historyContainer}>
+            <h4 style={styles.historyTitle}>Recent Interactions</h4>
+            <div style={styles.historyList}>
+              {chatState.interactionHistory.slice(-5).reverse().map((item, index) => (
+                <div key={index} style={styles.historyItem}>
+                  <span style={styles.historyMessage}>
+                    {item.message.length > 30 ? item.message.substring(0, 30) + '...' : item.message}
+                  </span>
+                  <span style={{
+                    ...styles.historyScore,
+                    color: item.scoreChange > 0 ? '#4CAF50' : item.scoreChange < 0 ? '#F44336' : '#808080'
+                  }}>
+                    {item.scoreChange > 0 ? '+' : ''}{item.scoreChange}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        <div style={styles.tipsContainer}>
+          <h4 style={styles.tipsTitle}>Tips to Increase Affection</h4>
+          <ul style={styles.tipsList}>
+            <li>Basic greetings (+1)</li>
+            <li>Show genuine interest (+1~+3)</li>
+            <li>Share about yourself (+1~+3)</li>
+            <li>Be friendly and creative (+3~+6)</li>
+            <li>Give sweet compliments (+5~+10)</li>
+          </ul>
+        </div>
+      </div>
+    );
+  }
+}
+
+// Styles for the component
+const styles: { [key: string]: React.CSSProperties } = {
+  container: {
+    padding: '16px',
+    fontFamily: 'Arial, sans-serif',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '8px',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'auto'
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '16px'
+  },
+  title: {
+    margin: 0,
+    color: '#333',
+    fontSize: '18px'
+  },
+  scoreContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center'
+  },
+  score: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    color: '#333'
+  },
+  statusMessage: {
+    fontSize: '14px',
+    fontWeight: 'bold'
+  },
+  progressBarContainer: {
+    marginBottom: '16px'
+  },
+  progressBarBackground: {
+    position: 'relative',
+    height: '24px',
+    backgroundColor: '#e0e0e0',
+    borderRadius: '12px',
+    overflow: 'hidden'
+  },
+  progressBar: {
+    height: '100%',
+    transition: 'width 0.5s ease, background-color 0.5s ease'
+  },
+  scaleMarkers: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '0 8px'
+  },
+  scaleMarker: {
+    fontSize: '12px',
+    color: '#333',
+    fontWeight: 'bold'
+  },
+  lastInteraction: {
+    marginBottom: '16px',
+    textAlign: 'center'
+  },
+  lastInteractionText: {
+    fontSize: '14px',
+    color: '#666'
+  },
+  historyContainer: {
+    marginBottom: '16px'
+  },
+  historyTitle: {
+    margin: '0 0 8px 0',
+    fontSize: '16px',
+    color: '#333'
+  },
+  historyList: {
+    margin: 0,
+    padding: 0,
+    listStyle: 'none'
+  },
+  historyItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '4px 0',
+    borderBottom: '1px solid #e0e0e0'
+  },
+  historyMessage: {
+    fontSize: '14px',
+    color: '#333',
+    flex: 1,
+    marginRight: '8px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
+  },
+  historyScore: {
+    fontSize: '14px',
+    fontWeight: 'bold'
+  },
+  tipsContainer: {
+    marginTop: 'auto'
+  },
+  tipsTitle: {
+    margin: '0 0 8px 0',
+    fontSize: '16px',
+    color: '#333'
+  },
+  tipsList: {
+    margin: 0,
+    paddingLeft: '20px',
+    fontSize: '14px',
+    color: '#333'
+  }
+};
