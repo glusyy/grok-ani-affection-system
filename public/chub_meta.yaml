@@ -23,3 +23,5 @@ config_schema:
       maximum: 50
       default: 10
   required: []
+github_path: 'https://github.com/glusyy/grok-ani-affection-system'
+
