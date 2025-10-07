@@ -31,6 +31,9 @@ type ConfigType = {
 // The main stage component
 export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateType, ConfigType> {
   
+  // Store the initial data
+  private initialData: InitialData<InitStateType, ChatStateType, MessageStateType, ConfigType>;
+  
   // Internal state for the component
   myInternalState: {
     currentAffection: number;
@@ -45,6 +48,10 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
 
   constructor(data: InitialData<InitStateType, ChatStateType, MessageStateType, ConfigType>) {
     super(data);
+    
+    // Store the initial data
+    this.initialData = data;
+    
     const {
         characters,         
         users,                  
@@ -70,14 +77,14 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
 
   async load(): Promise<Partial<LoadResponse<InitStateType, ChatStateType, MessageStateType>>> {
     // If we have saved state, restore it
-    if (this.data.initState && this.data.initState.currentAffection !== undefined) {
-      this.myInternalState.currentAffection = this.data.initState.currentAffection;
-      this.myInternalState.isMaxAffectionUnlocked = this.data.initState.isMaxAffectionUnlocked || false;
-      this.myInternalState.isInappropriateToleranceUnlocked = this.data.initState.isInappropriateToleranceUnlocked || false;
+    if (this.initialData.initState && this.initialData.initState.currentAffection !== undefined) {
+      this.myInternalState.currentAffection = this.initialData.initState.currentAffection;
+      this.myInternalState.isMaxAffectionUnlocked = this.initialData.initState.isMaxAffectionUnlocked || false;
+      this.myInternalState.isInappropriateToleranceUnlocked = this.initialData.initState.isInappropriateToleranceUnlocked || false;
     }
     
-    if (this.data.chatState && this.data.chatState.interactionHistory) {
-      this.myInternalState.interactionHistory = this.data.chatState.interactionHistory;
+    if (this.initialData.chatState && this.initialData.chatState.interactionHistory) {
+      this.myInternalState.interactionHistory = this.initialData.chatState.interactionHistory;
     }
     
     return {
