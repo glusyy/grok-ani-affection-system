@@ -5,6 +5,8 @@ import {LoadResponse} from "@chub-ai/stages-ts/dist/types/load";
 // Define our state types
 type InitStateType = {
   currentAffection: number;
+  isMaxAffectionUnlocked: boolean; // New flag to track if max affection is unlocked
+  isInappropriateToleranceUnlocked: boolean; // New flag to track if inappropriate tolerance is unlocked
 };
 
 type MessageStateType = {
@@ -32,6 +34,8 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   // Internal state for the component
   myInternalState: {
     currentAffection: number;
+    isMaxAffectionUnlocked: boolean;
+    isInappropriateToleranceUnlocked: boolean;
     interactionHistory: Array<{
       message: string;
       scoreChange: number;
@@ -53,19 +57,36 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     
     // Initialize with default affection score of 0 if not provided
     const initialAffection = initState?.currentAffection || 0;
+    const isMaxUnlocked = initState?.isMaxAffectionUnlocked || false;
+    const isInappropriateUnlocked = initState?.isInappropriateToleranceUnlocked || false;
     
     this.myInternalState = {
       currentAffection: initialAffection,
+      isMaxAffectionUnlocked: isMaxUnlocked,
+      isInappropriateToleranceUnlocked: isInappropriateUnlocked,
       interactionHistory: chatState?.interactionHistory || []
     };
   }
 
   async load(): Promise<Partial<LoadResponse<InitStateType, ChatStateType, MessageStateType>>> {
+    // If we have saved state, restore it
+    if (this.initState && this.initState.currentAffection !== undefined) {
+      this.myInternalState.currentAffection = this.initState.currentAffection;
+      this.myInternalState.isMaxAffectionUnlocked = this.initState.isMaxAffectionUnlocked || false;
+      this.myInternalState.isInappropriateToleranceUnlocked = this.initState.isInappropriateToleranceUnlocked || false;
+    }
+    
+    if (this.chatState && this.chatState.interactionHistory) {
+      this.myInternalState.interactionHistory = this.chatState.interactionHistory;
+    }
+    
     return {
       success: true,
       error: null,
       initState: {
-        currentAffection: this.myInternalState.currentAffection
+        currentAffection: this.myInternalState.currentAffection,
+        isMaxAffectionUnlocked: this.myInternalState.isMaxAffectionUnlocked,
+        isInappropriateToleranceUnlocked: this.myInternalState.isInappropriateToleranceUnlocked
       },
       chatState: {
         interactionHistory: this.myInternalState.interactionHistory
@@ -88,7 +109,17 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     let scoreChange = 0;
     let interactionType: 'positive' | 'negative' | 'neutral' = 'neutral';
     
-    // Positive interactions
+    // Check if max affection is unlocked (score of 15)
+    if (previousAffection >= 15 && !this.myInternalState.isMaxAffectionUnlocked) {
+      this.myInternalState.isMaxAffectionUnlocked = true;
+    }
+    
+    // Check if inappropriate tolerance is unlocked (score of 10)
+    if (previousAffection >= 10 && !this.myInternalState.isInappropriateToleranceUnlocked) {
+      this.myInternalState.isInappropriateToleranceUnlocked = true;
+    }
+    
+    // Positive interactions - more comprehensive detection
     if (message.includes('hi') || message.includes('hello') || message.includes('how are you')) {
       scoreChange = 1;
       interactionType = 'positive';
@@ -110,25 +141,44 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       interactionType = 'positive';
     }
     // Check for sweet compliments
-    else if (message.includes('love') || message.includes('beautiful') || message.includes('perfect') || 
-             message.includes('amazing') || message.includes('wonderful')) {
+    else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
+             message.includes('perfect') || message.includes('amazing') || message.includes('wonderful') ||
+             message.includes('special') || message.includes('flowers')) {
       scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10
       interactionType = 'positive';
     }
-    // Negative interactions
+    // Negative interactions - more comprehensive detection
     else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
              message.includes('annoying')) {
-      scoreChange = -(Math.floor(Math.random() * 6) + 3); // -3 to -8
-      interactionType = 'negative';
+      // Only apply negative score if max affection is not unlocked
+      if (!this.myInternalState.isMaxAffectionUnlocked) {
+        scoreChange = -(Math.floor(Math.random() * 6) + 3); // -3 to -8
+        interactionType = 'negative';
+      } else {
+        interactionType = 'neutral'; // No penalty when max affection is unlocked
+      }
     }
-    // Check for explicit content (basic detection)
-    else if (message.includes('sex') || message.includes('naked') || message.includes('nsfw')) {
-      scoreChange = -(Math.floor(Math.random() * 6) + 5); // -5 to -10
-      interactionType = 'negative';
+    // Check for explicit content - more comprehensive detection
+    else if (message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
+             message.includes('fuck') || message.includes('sexual') || message.includes('sexy time')) {
+      // Only apply penalty if inappropriate tolerance is not unlocked
+      if (!this.myInternalState.isInappropriateToleranceUnlocked) {
+        scoreChange = -(Math.floor(Math.random() * 6) + 5); // -5 to -10
+        interactionType = 'negative';
+      } else {
+        interactionType = 'neutral'; // No penalty when inappropriate tolerance is unlocked
+      }
     }
     
     // Calculate new affection score, ensuring it stays within bounds
-    const newAffection = Math.max(-10, Math.min(15, previousAffection + scoreChange));
+    // If max affection is unlocked, don't allow the score to decrease
+    let newAffection;
+    if (this.myInternalState.isMaxAffectionUnlocked) {
+      newAffection = Math.max(15, Math.min(15, previousAffection + scoreChange)); // Lock at 15
+    } else {
+      newAffection = Math.max(-10, Math.min(15, previousAffection + scoreChange)); // Normal range
+    }
+    
     this.myInternalState.currentAffection = newAffection;
     
     // Update the interaction history
@@ -146,6 +196,24 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       this.myInternalState.interactionHistory = this.myInternalState.interactionHistory.slice(-maxHistoryItems);
     }
     
+    // Add a system message to show the score change
+    let systemMessage = null;
+    if (scoreChange !== 0) {
+      const direction = scoreChange > 0 ? 'increased' : 'decreased';
+      systemMessage = `Ani's affection score ${direction} by ${Math.abs(scoreChange)}. Current score: ${newAffection}`;
+    } else if (interactionType === 'neutral' && 
+              (message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
+               message.includes('fuck') || message.includes('sexual') || message.includes('sexy time') ||
+               message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
+               message.includes('annoying'))) {
+      // Special message for unlocked tolerance
+      if (this.myInternalState.isMaxAffectionUnlocked) {
+        systemMessage = "Ani's affection is at maximum. She accepts you completely.";
+      } else if (this.myInternalState.isInappropriateToleranceUnlocked) {
+        systemMessage = "Ani trusts you deeply and understands your intentions.";
+      }
+    }
+    
     return {
       messageState: {
         previousAffection: previousAffection,
@@ -154,14 +222,19 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       },
       chatState: {
         interactionHistory: this.myInternalState.interactionHistory
-      }
+      },
+      systemMessage: systemMessage
     };
   }
 
   async afterResponse(botMessage: Message): Promise<Partial<StageResponse<ChatStateType, MessageStateType>>> {
-    // We don't need to modify the response, just pass through the state
+    // Make sure we're saving the current state
     return {
-      messageState: null,
+      messageState: {
+        previousAffection: this.myInternalState.currentAffection,
+        lastChange: 0,
+        lastInteractionType: 'neutral'
+      },
       chatState: {
         interactionHistory: this.myInternalState.interactionHistory
       }
@@ -171,32 +244,45 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   render(): ReactElement {
     const currentAffection = this.myInternalState.currentAffection;
     const interactionHistory = this.myInternalState.interactionHistory;
+    const isMaxUnlocked = this.myInternalState.isMaxAffectionUnlocked;
+    const isInappropriateUnlocked = this.myInternalState.isInappropriateToleranceUnlocked;
     
     // Determine the status color and message based on affection score
-    let statusColor = '#808080'; // Default gray
+    let statusColor = '#9C27B0'; // Default purple
     let statusMessage = 'Neutral';
     let avatarIcon = '○'; // Default neutral icon
+    let avatarBg = '#1A1A1A'; // Default dark background
     
-    if (currentAffection >= 10) {
-      statusColor = '#FF1493'; // Deep pink
-      statusMessage = 'Deeply Affectionate';
-      avatarIcon = '♥';
+    if (currentAffection >= 15) {
+      statusColor = '#E91E63'; // Hot pink
+      statusMessage = isMaxUnlocked ? 'Eternal Bond' : 'Deeply Affectionate';
+      avatarIcon = isMaxUnlocked ? '♦' : '♥';
+      avatarBg = '#2D0A15';
+    } else if (currentAffection >= 10) {
+      statusColor = '#E91E63'; // Hot pink
+      statusMessage = isInappropriateUnlocked ? 'Complete Trust' : 'Very Fond';
+      avatarIcon = isInappropriateUnlocked ? '◆' : '◐';
+      avatarBg = '#2D0A15';
     } else if (currentAffection >= 5) {
-      statusColor = '#FF69B4'; // Medium pink
+      statusColor = '#E91E63'; // Hot pink
       statusMessage = 'Very Fond';
       avatarIcon = '◐';
+      avatarBg = '#2D0A15';
     } else if (currentAffection >= 1) {
-      statusColor = '#FFB6C1'; // Light pink
+      statusColor = '#9C27B0'; // Purple
       statusMessage = 'Friendly';
       avatarIcon = '◑';
+      avatarBg = '#1A0A1A';
     } else if (currentAffection <= -5) {
-      statusColor = '#8B0000'; // Dark red
+      statusColor = '#4A148C'; // Deep purple
       statusMessage = 'Very Upset';
       avatarIcon = '✕';
+      avatarBg = '#0A0A0A';
     } else if (currentAffection <= -1) {
-      statusColor = '#DC143C'; // Crimson
+      statusColor = '#6A1B9A'; // Medium purple
       statusMessage = 'Unhappy';
       avatarIcon = '◒';
+      avatarBg = '#0F0F0F';
     }
     
     // Calculate percentage for the progress bar
@@ -212,60 +298,68 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         width: '100%',
         height: '100%',
         padding: '16px',
-        fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%)',
-        borderRadius: '12px',
+        fontFamily: 'Cinzel, serif', // Elegant serif font
+        background: 'linear-gradient(135deg, #121212 0%, #1A0A1A 50%, #0A0A0A 100%)',
+        borderRadius: '0px', // Sharp corners for gothic look
         display: 'flex',
         flexDirection: 'column',
         overflow: 'auto',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+        boxShadow: '0 0 20px rgba(233, 30, 99, 0.3)', // Pink glow
+        border: '1px solid #333',
+        color: '#E0E0E0'
       }}>
         {/* Header with avatar and score */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          marginBottom: '16px',
-          backgroundColor: 'white',
-          padding: '12px',
-          borderRadius: '10px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+          marginBottom: '20px',
+          backgroundColor: 'rgba(26, 10, 26, 0.7)',
+          padding: '16px',
+          borderRadius: '0px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+          border: '1px solid #333'
         }}>
           <div style={{
-            width: '60px',
-            height: '60px',
+            width: '70px',
+            height: '70px',
             borderRadius: '50%',
-            backgroundColor: statusColor,
+            backgroundColor: avatarBg,
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
             marginRight: '16px',
-            fontSize: '32px',
-            color: 'white',
-            fontWeight: 'bold'
+            fontSize: '36px',
+            color: statusColor,
+            fontWeight: 'bold',
+            border: `2px solid ${statusColor}`,
+            boxShadow: `0 0 15px ${statusColor}40`
           }}>
             {avatarIcon}
           </div>
           <div style={{ flex: 1 }}>
             <h3 style={{
               margin: '0 0 4px 0',
-              color: '#333',
-              fontSize: '18px',
-              fontWeight: '600'
+              color: '#E0E0E0',
+              fontSize: '20px',
+              fontWeight: '600',
+              textShadow: '0 0 10px rgba(233, 30, 99, 0.5)'
             }}>Ani's Affection</h3>
             <div style={{
               display: 'flex',
               alignItems: 'center'
             }}>
               <span style={{
-                fontSize: '28px',
+                fontSize: '32px',
                 fontWeight: 'bold',
                 color: statusColor,
-                marginRight: '8px'
+                marginRight: '8px',
+                textShadow: `0 0 10px ${statusColor}80`
               }}>{currentAffection}</span>
               <span style={{
                 fontSize: '16px',
                 fontWeight: '500',
-                color: statusColor
+                color: statusColor,
+                textShadow: `0 0 8px ${statusColor}60`
               }}>{statusMessage}</span>
             </div>
           </div>
@@ -274,34 +368,37 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         {/* Progress bar */}
         <div style={{
           marginBottom: '20px',
-          backgroundColor: 'white',
+          backgroundColor: 'rgba(26, 10, 26, 0.7)',
           padding: '16px',
-          borderRadius: '10px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+          borderRadius: '0px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+          border: '1px solid #333'
         }}>
           <div style={{
             position: 'relative',
-            height: '20px',
-            backgroundColor: '#e0e0e0',
-            borderRadius: '10px',
+            height: '24px',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            borderRadius: '0px',
             overflow: 'hidden',
-            marginBottom: '8px'
+            marginBottom: '8px',
+            border: '1px solid #333'
           }}>
             <div style={{
               height: '100%',
               width: `${percentage}%`,
-              background: `linear-gradient(90deg, #8B0000 0%, #DC143C 20%, #808080 40%, #FFB6C1 60%, #FF69B4 80%, #FF1493 100%)`,
+              background: `linear-gradient(90deg, #4A148C 0%, #6A1B9A 20%, #9C27B0 40%, #E91E63 60%, #F50057 80%, #FF4081 100%)`,
               backgroundSize: '200% 100%',
               backgroundPosition: `${Math.max(0, Math.min(100, percentage))}% 0`,
               transition: 'width 0.8s ease, background-position 0.8s ease',
-              borderRadius: '10px'
+              borderRadius: '0px',
+              boxShadow: `0 0 10px ${statusColor}60`
             }} />
           </div>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
-            fontSize: '12px',
-            color: '#666'
+            fontSize: '14px',
+            color: '#BBB'
           }}>
             <span>-10</span>
             <span>0</span>
@@ -309,26 +406,97 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
           </div>
         </div>
         
+        {/* Unlock status */}
+        <div style={{
+          marginBottom: '16px',
+          backgroundColor: 'rgba(26, 10, 26, 0.7)',
+          padding: '16px',
+          borderRadius: '0px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+          border: '1px solid #333'
+        }}>
+          <div style={{
+            fontSize: '16px',
+            fontWeight: '600',
+            color: '#E0E0E0',
+            marginBottom: '8px',
+            textShadow: '0 0 8px rgba(233, 30, 99, 0.3)'
+          }}>Relationship Milestones</div>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '14px',
+              color: isInappropriateUnlocked ? '#E91E63' : '#666'
+            }}>
+              <span style={{ 
+                marginRight: '10px', 
+                width: '20px', 
+                height: '20px', 
+                borderRadius: '50%', 
+                backgroundColor: isInappropriateUnlocked ? 'rgba(233, 30, 99, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+                color: isInappropriateUnlocked ? '#E91E63' : '#666',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                border: `1px solid ${isInappropriateUnlocked ? '#E91E63' : '#444'}`
+              }}>{isInappropriateUnlocked ? '✓' : '○'}</span>
+              <span>Complete Trust (Score 10+)</span>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '14px',
+              color: isMaxUnlocked ? '#E91E63' : '#666'
+            }}>
+              <span style={{ 
+                marginRight: '10px', 
+                width: '20px', 
+                height: '20px', 
+                borderRadius: '50%', 
+                backgroundColor: isMaxUnlocked ? 'rgba(233, 30, 99, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+                color: isMaxUnlocked ? '#E91E63' : '#666',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                border: `1px solid ${isMaxUnlocked ? '#E91E63' : '#444'}`
+              }}>{isMaxUnlocked ? '✓' : '○'}</span>
+              <span>Eternal Bond (Score 15)</span>
+            </div>
+          </div>
+        </div>
+        
         {/* Last interaction */}
         {lastInteraction && (
           <div style={{
             marginBottom: '16px',
-            backgroundColor: 'white',
-            padding: '12px',
-            borderRadius: '10px',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+            backgroundColor: 'rgba(26, 10, 26, 0.7)',
+            padding: '16px',
+            borderRadius: '0px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+            border: '1px solid #333'
           }}>
             <div style={{
-              fontSize: '14px',
+              fontSize: '16px',
               fontWeight: '600',
-              color: '#333',
-              marginBottom: '4px'
+              color: '#E0E0E0',
+              marginBottom: '8px',
+              textShadow: '0 0 8px rgba(233, 30, 99, 0.3)'
             }}>Last Interaction</div>
             <div style={{
               fontSize: '14px',
-              color: '#555',
-              marginBottom: '8px',
-              fontStyle: 'italic'
+              color: '#BBB',
+              marginBottom: '12px',
+              fontStyle: 'italic',
+              lineHeight: '1.4'
             }}>
               "{lastInteraction.message.length > 50 
                 ? lastInteraction.message.substring(0, 50) + '...' 
@@ -339,14 +507,18 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
               justifyContent: 'flex-end'
             }}>
               <span style={{
-                fontSize: '16px',
+                fontSize: '18px',
                 fontWeight: 'bold',
-                color: lastInteraction.scoreChange > 0 ? '#4CAF50' : 
-                        lastInteraction.scoreChange < 0 ? '#F44336' : '#808080',
-                padding: '4px 8px',
-                borderRadius: '4px',
-                backgroundColor: lastInteraction.scoreChange > 0 ? 'rgba(76, 175, 80, 0.1)' : 
-                               lastInteraction.scoreChange < 0 ? 'rgba(244, 67, 54, 0.1)' : 'rgba(128, 128, 128, 0.1)'
+                color: lastInteraction.scoreChange > 0 ? '#E91E63' : 
+                        lastInteraction.scoreChange < 0 ? '#9C27B0' : '#666',
+                padding: '6px 12px',
+                borderRadius: '0px',
+                backgroundColor: lastInteraction.scoreChange > 0 ? 'rgba(233, 30, 99, 0.1)' : 
+                               lastInteraction.scoreChange < 0 ? 'rgba(156, 39, 176, 0.1)' : 'rgba(0, 0, 0, 0.2)',
+                border: `1px solid ${lastInteraction.scoreChange > 0 ? '#E91E63' : 
+                               lastInteraction.scoreChange < 0 ? '#9C27B0' : '#444'}`,
+                textShadow: `0 0 8px ${lastInteraction.scoreChange > 0 ? '#E91E63' : 
+                               lastInteraction.scoreChange < 0 ? '#9C27B0' : '#444'}60`
               }}>
                 {lastInteraction.scoreChange > 0 ? '+' : ''}{lastInteraction.scoreChange}
               </span>
@@ -357,40 +529,43 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         {/* Tips section */}
         <div style={{
           marginTop: 'auto',
-          backgroundColor: 'white',
+          backgroundColor: 'rgba(26, 10, 26, 0.7)',
           padding: '16px',
-          borderRadius: '10px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+          borderRadius: '0px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+          border: '1px solid #333'
         }}>
           <h4 style={{
-            margin: '0 0 12px 0',
-            fontSize: '16px',
-            color: '#333',
-            fontWeight: '600'
-          }}>How to Increase Affection</h4>
+            margin: '0 0 16px 0',
+            fontSize: '18px',
+            color: '#E0E0E0',
+            fontWeight: '600',
+            textShadow: '0 0 8px rgba(233, 30, 99, 0.3)'
+          }}>How to Win Her Heart</h4>
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
-            gap: '8px'
+            gap: '12px'
           }}>
             <div style={{
               display: 'flex',
               alignItems: 'center',
               fontSize: '14px',
-              color: '#333'
+              color: '#BBB'
             }}>
               <span style={{ 
-                marginRight: '8px', 
-                width: '20px', 
-                height: '20px', 
+                marginRight: '10px', 
+                width: '24px', 
+                height: '24px', 
                 borderRadius: '50%', 
-                backgroundColor: '#4CAF50',
-                color: 'white',
+                backgroundColor: 'rgba(233, 30, 99, 0.2)',
+                color: '#E91E63',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                fontSize: '12px',
-                fontWeight: 'bold'
+                fontSize: '14px',
+                fontWeight: 'bold',
+                border: '1px solid #E91E63'
               }}>1</span>
               <span>Basic greetings (+1)</span>
             </div>
@@ -398,20 +573,21 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
               display: 'flex',
               alignItems: 'center',
               fontSize: '14px',
-              color: '#333'
+              color: '#BBB'
             }}>
               <span style={{ 
-                marginRight: '8px', 
-                width: '20px', 
-                height: '20px', 
+                marginRight: '10px', 
+                width: '24px', 
+                height: '24px', 
                 borderRadius: '50%', 
-                backgroundColor: '#2196F3',
-                color: 'white',
+                backgroundColor: 'rgba(156, 39, 176, 0.2)',
+                color: '#9C27B0',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                fontSize: '12px',
-                fontWeight: 'bold'
+                fontSize: '14px',
+                fontWeight: 'bold',
+                border: '1px solid #9C27B0'
               }}>2</span>
               <span>Show interest (+1~+3)</span>
             </div>
@@ -419,20 +595,21 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
               display: 'flex',
               alignItems: 'center',
               fontSize: '14px',
-              color: '#333'
+              color: '#BBB'
             }}>
               <span style={{ 
-                marginRight: '8px', 
-                width: '20px', 
-                height: '20px', 
+                marginRight: '10px', 
+                width: '24px', 
+                height: '24px', 
                 borderRadius: '50%', 
-                backgroundColor: '#9C27B0',
-                color: 'white',
+                backgroundColor: 'rgba(103, 58, 183, 0.2)',
+                color: '#673AB7',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                fontSize: '12px',
-                fontWeight: 'bold'
+                fontSize: '14px',
+                fontWeight: 'bold',
+                border: '1px solid #673AB7'
               }}>3</span>
               <span>Share about yourself (+1~+3)</span>
             </div>
@@ -440,20 +617,21 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
               display: 'flex',
               alignItems: 'center',
               fontSize: '14px',
-              color: '#333'
+              color: '#BBB'
             }}>
               <span style={{ 
-                marginRight: '8px', 
-                width: '20px', 
-                height: '20px', 
+                marginRight: '10px', 
+                width: '24px', 
+                height: '24px', 
                 borderRadius: '50%', 
-                backgroundColor: '#FF9800',
-                color: 'white',
+                backgroundColor: 'rgba(63, 81, 181, 0.2)',
+                color: '#3F51B5',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                fontSize: '12px',
-                fontWeight: 'bold'
+                fontSize: '14px',
+                fontWeight: 'bold',
+                border: '1px solid #3F51B5'
               }}>4</span>
               <span>Be creative (+3~+6)</span>
             </div>
@@ -461,21 +639,23 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
               display: 'flex',
               alignItems: 'center',
               fontSize: '14px',
-              color: '#333',
+              color: '#BBB',
               gridColumn: '1 / span 2'
             }}>
               <span style={{ 
-                marginRight: '8px', 
-                width: '20px', 
-                height: '20px', 
+                marginRight: '10px', 
+                width: '24px', 
+                height: '24px', 
                 borderRadius: '50%', 
-                backgroundColor: '#E91E63',
-                color: 'white',
+                backgroundColor: 'rgba(233, 30, 99, 0.3)',
+                color: '#E91E63',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                fontSize: '12px',
-                fontWeight: 'bold'
+                fontSize: '14px',
+                fontWeight: 'bold',
+                border: '1px solid #E91E63',
+                boxShadow: '0 0 8px rgba(233, 30, 99, 0.4)'
               }}>5</span>
               <span>Sweet compliments (+5~+10)</span>
             </div>
