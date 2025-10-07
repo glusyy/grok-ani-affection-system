@@ -175,179 +175,311 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     // Determine the status color and message based on affection score
     let statusColor = '#808080'; // Default gray
     let statusMessage = 'Neutral';
+    let avatarIcon = '○'; // Default neutral icon
     
     if (currentAffection >= 10) {
-      statusColor = '#FF69B4'; // Deep pink
+      statusColor = '#FF1493'; // Deep pink
       statusMessage = 'Deeply Affectionate';
+      avatarIcon = '♥';
     } else if (currentAffection >= 5) {
-      statusColor = '#FFB6C1'; // Light pink
+      statusColor = '#FF69B4'; // Medium pink
       statusMessage = 'Very Fond';
+      avatarIcon = '◐';
     } else if (currentAffection >= 1) {
-      statusColor = '#FFC0CB'; // Pink
+      statusColor = '#FFB6C1'; // Light pink
       statusMessage = 'Friendly';
+      avatarIcon = '◑';
     } else if (currentAffection <= -5) {
       statusColor = '#8B0000'; // Dark red
       statusMessage = 'Very Upset';
+      avatarIcon = '✕';
     } else if (currentAffection <= -1) {
       statusColor = '#DC143C'; // Crimson
       statusMessage = 'Unhappy';
+      avatarIcon = '◒';
     }
     
     // Calculate percentage for the progress bar
     const percentage = ((currentAffection + 10) / 25) * 100;
+    
+    // Get the last interaction if available
+    const lastInteraction = interactionHistory.length > 0 
+      ? interactionHistory[interactionHistory.length - 1] 
+      : null;
     
     return (
       <div style={{
         width: '100%',
         height: '100%',
         padding: '16px',
-        fontFamily: 'Arial, sans-serif',
-        backgroundColor: '#f5f5f5',
-        borderRadius: '8px',
+        fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%)',
+        borderRadius: '12px',
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'auto'
+        overflow: 'auto',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
       }}>
+        {/* Header with avatar and score */}
         <div style={{
           display: 'flex',
-          justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '16px'
+          marginBottom: '16px',
+          backgroundColor: 'white',
+          padding: '12px',
+          borderRadius: '10px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
         }}>
-          <h3 style={{
-            margin: 0,
-            color: '#333',
-            fontSize: '18px'
-          }}>Ani's Affection Score</h3>
           <div style={{
+            width: '60px',
+            height: '60px',
+            borderRadius: '50%',
+            backgroundColor: statusColor,
             display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center'
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: '16px',
+            fontSize: '32px',
+            color: 'white',
+            fontWeight: 'bold'
           }}>
-            <span style={{
-              fontSize: '24px',
-              fontWeight: 'bold',
-              color: '#333'
-            }}>{currentAffection}</span>
-            <span style={{
-              fontSize: '14px',
-              fontWeight: 'bold',
-              color: statusColor
-            }}>{statusMessage}</span>
+            {avatarIcon}
+          </div>
+          <div style={{ flex: 1 }}>
+            <h3 style={{
+              margin: '0 0 4px 0',
+              color: '#333',
+              fontSize: '18px',
+              fontWeight: '600'
+            }}>Ani's Affection</h3>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <span style={{
+                fontSize: '28px',
+                fontWeight: 'bold',
+                color: statusColor,
+                marginRight: '8px'
+              }}>{currentAffection}</span>
+              <span style={{
+                fontSize: '16px',
+                fontWeight: '500',
+                color: statusColor
+              }}>{statusMessage}</span>
+            </div>
           </div>
         </div>
         
+        {/* Progress bar */}
         <div style={{
-          marginBottom: '16px'
+          marginBottom: '20px',
+          backgroundColor: 'white',
+          padding: '16px',
+          borderRadius: '10px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
         }}>
           <div style={{
             position: 'relative',
-            height: '24px',
+            height: '20px',
             backgroundColor: '#e0e0e0',
-            borderRadius: '12px',
-            overflow: 'hidden'
+            borderRadius: '10px',
+            overflow: 'hidden',
+            marginBottom: '8px'
           }}>
             <div style={{
               height: '100%',
               width: `${percentage}%`,
-              backgroundColor: statusColor,
-              transition: 'width 0.5s ease, background-color 0.5s ease'
+              background: `linear-gradient(90deg, #8B0000 0%, #DC143C 20%, #808080 40%, #FFB6C1 60%, #FF69B4 80%, #FF1493 100%)`,
+              backgroundSize: '200% 100%',
+              backgroundPosition: `${Math.max(0, Math.min(100, percentage))}% 0`,
+              transition: 'width 0.8s ease, background-position 0.8s ease',
+              borderRadius: '10px'
             }} />
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '0 8px'
-            }}>
-              <span style={{
-                fontSize: '12px',
-                color: '#333',
-                fontWeight: 'bold'
-              }}>-10</span>
-              <span style={{
-                fontSize: '12px',
-                color: '#333',
-                fontWeight: 'bold'
-              }}>0</span>
-              <span style={{
-                fontSize: '12px',
-                color: '#333',
-                fontWeight: 'bold'
-              }}>+15</span>
-            </div>
+          </div>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: '12px',
+            color: '#666'
+          }}>
+            <span>-10</span>
+            <span>0</span>
+            <span>+15</span>
           </div>
         </div>
         
-        {interactionHistory.length > 0 && (
+        {/* Last interaction */}
+        {lastInteraction && (
           <div style={{
-            marginBottom: '16px'
+            marginBottom: '16px',
+            backgroundColor: 'white',
+            padding: '12px',
+            borderRadius: '10px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
           }}>
-            <h4 style={{
-              margin: '0 0 8px 0',
-              fontSize: '16px',
-              color: '#333'
-            }}>Recent Interactions</h4>
             <div style={{
-              margin: 0,
-              padding: 0,
-              listStyle: 'none'
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#333',
+              marginBottom: '4px'
+            }}>Last Interaction</div>
+            <div style={{
+              fontSize: '14px',
+              color: '#555',
+              marginBottom: '8px',
+              fontStyle: 'italic'
             }}>
-              {interactionHistory.slice(-5).reverse().map((item, index) => (
-                <div key={index} style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '4px 0',
-                  borderBottom: '1px solid #e0e0e0'
-                }}>
-                  <span style={{
-                    fontSize: '14px',
-                    color: '#333',
-                    flex: 1,
-                    marginRight: '8px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    {item.message.length > 30 ? item.message.substring(0, 30) + '...' : item.message}
-                  </span>
-                  <span style={{
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    color: item.scoreChange > 0 ? '#4CAF50' : item.scoreChange < 0 ? '#F44336' : '#808080'
-                  }}>
-                    {item.scoreChange > 0 ? '+' : ''}{item.scoreChange}
-                  </span>
-                </div>
-              ))}
+              "{lastInteraction.message.length > 50 
+                ? lastInteraction.message.substring(0, 50) + '...' 
+                : lastInteraction.message}"
+            </div>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end'
+            }}>
+              <span style={{
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: lastInteraction.scoreChange > 0 ? '#4CAF50' : 
+                        lastInteraction.scoreChange < 0 ? '#F44336' : '#808080',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                backgroundColor: lastInteraction.scoreChange > 0 ? 'rgba(76, 175, 80, 0.1)' : 
+                               lastInteraction.scoreChange < 0 ? 'rgba(244, 67, 54, 0.1)' : 'rgba(128, 128, 128, 0.1)'
+              }}>
+                {lastInteraction.scoreChange > 0 ? '+' : ''}{lastInteraction.scoreChange}
+              </span>
             </div>
           </div>
         )}
         
+        {/* Tips section */}
         <div style={{
-          marginTop: 'auto'
+          marginTop: 'auto',
+          backgroundColor: 'white',
+          padding: '16px',
+          borderRadius: '10px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
         }}>
           <h4 style={{
-            margin: '0 0 8px 0',
+            margin: '0 0 12px 0',
             fontSize: '16px',
-            color: '#333'
-          }}>Tips to Increase Affection</h4>
-          <ul style={{
-            margin: 0,
-            paddingLeft: '20px',
-            fontSize: '14px',
-            color: '#333'
+            color: '#333',
+            fontWeight: '600'
+          }}>How to Increase Affection</h4>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '8px'
           }}>
-            <li>Basic greetings (+1)</li>
-            <li>Show genuine interest (+1~+3)</li>
-            <li>Share about yourself (+1~+3)</li>
-            <li>Be friendly and creative (+3~+6)</li>
-            <li>Give sweet compliments (+5~+10)</li>
-          </ul>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '14px',
+              color: '#333'
+            }}>
+              <span style={{ 
+                marginRight: '8px', 
+                width: '20px', 
+                height: '20px', 
+                borderRadius: '50%', 
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                fontSize: '12px',
+                fontWeight: 'bold'
+              }}>1</span>
+              <span>Basic greetings (+1)</span>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '14px',
+              color: '#333'
+            }}>
+              <span style={{ 
+                marginRight: '8px', 
+                width: '20px', 
+                height: '20px', 
+                borderRadius: '50%', 
+                backgroundColor: '#2196F3',
+                color: 'white',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                fontSize: '12px',
+                fontWeight: 'bold'
+              }}>2</span>
+              <span>Show interest (+1~+3)</span>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '14px',
+              color: '#333'
+            }}>
+              <span style={{ 
+                marginRight: '8px', 
+                width: '20px', 
+                height: '20px', 
+                borderRadius: '50%', 
+                backgroundColor: '#9C27B0',
+                color: 'white',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                fontSize: '12px',
+                fontWeight: 'bold'
+              }}>3</span>
+              <span>Share about yourself (+1~+3)</span>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '14px',
+              color: '#333'
+            }}>
+              <span style={{ 
+                marginRight: '8px', 
+                width: '20px', 
+                height: '20px', 
+                borderRadius: '50%', 
+                backgroundColor: '#FF9800',
+                color: 'white',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                fontSize: '12px',
+                fontWeight: 'bold'
+              }}>4</span>
+              <span>Be creative (+3~+6)</span>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '14px',
+              color: '#333',
+              gridColumn: '1 / span 2'
+            }}>
+              <span style={{ 
+                marginRight: '8px', 
+                width: '20px', 
+                height: '20px', 
+                borderRadius: '50%', 
+                backgroundColor: '#E91E63',
+                color: 'white',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                fontSize: '12px',
+                fontWeight: 'bold'
+              }}>5</span>
+              <span>Sweet compliments (+5~+10)</span>
+            </div>
+          </div>
         </div>
       </div>
     );
