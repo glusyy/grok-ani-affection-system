@@ -70,14 +70,14 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
 
   async load(): Promise<Partial<LoadResponse<InitStateType, ChatStateType, MessageStateType>>> {
     // If we have saved state, restore it
-    if (this.initState && this.initState.currentAffection !== undefined) {
-      this.myInternalState.currentAffection = this.initState.currentAffection;
-      this.myInternalState.isMaxAffectionUnlocked = this.initState.isMaxAffectionUnlocked || false;
-      this.myInternalState.isInappropriateToleranceUnlocked = this.initState.isInappropriateToleranceUnlocked || false;
+    if (this.data.initState && this.data.initState.currentAffection !== undefined) {
+      this.myInternalState.currentAffection = this.data.initState.currentAffection;
+      this.myInternalState.isMaxAffectionUnlocked = this.data.initState.isMaxAffectionUnlocked || false;
+      this.myInternalState.isInappropriateToleranceUnlocked = this.data.initState.isInappropriateToleranceUnlocked || false;
     }
     
-    if (this.chatState && this.chatState.interactionHistory) {
-      this.myInternalState.interactionHistory = this.chatState.interactionHistory;
+    if (this.data.chatState && this.data.chatState.interactionHistory) {
+      this.myInternalState.interactionHistory = this.data.chatState.interactionHistory;
     }
     
     return {
