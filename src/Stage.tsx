@@ -250,7 +250,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
 
   render(): ReactElement {
     const currentAffection = this.myInternalState.currentAffection;
-    const interactionHistory = this.myInternalState.interactionHistory;
     const isMaxUnlocked = this.myInternalState.isMaxAffectionUnlocked;
     const isInappropriateUnlocked = this.myInternalState.isInappropriateToleranceUnlocked;
     
@@ -295,24 +294,16 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     // Calculate percentage for the progress bar
     const percentage = ((currentAffection + 10) / 25) * 100;
     
-    // Get the last interaction if available
-    const lastInteraction = interactionHistory.length > 0 
-      ? interactionHistory[interactionHistory.length - 1] 
-      : null;
-    
     return (
       <div style={{
         width: '100%',
         height: '100%',
         padding: '16px',
-        fontFamily: 'Cinzel, serif', // Elegant serif font
-        background: 'linear-gradient(135deg, #121212 0%, #1A0A1A 50%, #0A0A0A 100%)',
-        borderRadius: '0px', // Sharp corners for gothic look
+        fontFamily: 'Cinzel, serif',
+        background: 'transparent',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'auto',
-        boxShadow: '0 0 20px rgba(233, 30, 99, 0.3)', // Pink glow
-        border: '1px solid #333',
         color: '#E0E0E0'
       }}>
         {/* Header with avatar and score */}
@@ -477,194 +468,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
                 border: `1px solid ${isMaxUnlocked ? '#E91E63' : '#444'}`
               }}>{isMaxUnlocked ? '✓' : '○'}</span>
               <span>Eternal Bond (Score 15)</span>
-            </div>
-          </div>
-        </div>
-        
-        {/* Last interaction */}
-        {lastInteraction && (
-          <div style={{
-            marginBottom: '16px',
-            backgroundColor: 'rgba(26, 10, 26, 0.7)',
-            padding: '16px',
-            borderRadius: '0px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
-            border: '1px solid #333'
-          }}>
-            <div style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#E0E0E0',
-              marginBottom: '8px',
-              textShadow: '0 0 8px rgba(233, 30, 99, 0.3)'
-            }}>Last Interaction</div>
-            <div style={{
-              fontSize: '14px',
-              color: '#BBB',
-              marginBottom: '12px',
-              fontStyle: 'italic',
-              lineHeight: '1.4'
-            }}>
-              "{lastInteraction.message.length > 50 
-                ? lastInteraction.message.substring(0, 50) + '...' 
-                : lastInteraction.message}"
-            </div>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-end'
-            }}>
-              <span style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: lastInteraction.scoreChange > 0 ? '#E91E63' : 
-                        lastInteraction.scoreChange < 0 ? '#9C27B0' : '#666',
-                padding: '6px 12px',
-                borderRadius: '0px',
-                backgroundColor: lastInteraction.scoreChange > 0 ? 'rgba(233, 30, 99, 0.1)' : 
-                               lastInteraction.scoreChange < 0 ? 'rgba(156, 39, 176, 0.1)' : 'rgba(0, 0, 0, 0.2)',
-                border: `1px solid ${lastInteraction.scoreChange > 0 ? '#E91E63' : 
-                               lastInteraction.scoreChange < 0 ? '#9C27B0' : '#444'}`,
-                textShadow: `0 0 8px ${lastInteraction.scoreChange > 0 ? '#E91E63' : 
-                               lastInteraction.scoreChange < 0 ? '#9C27B0' : '#444'}60`
-              }}>
-                {lastInteraction.scoreChange > 0 ? '+' : ''}{lastInteraction.scoreChange}
-              </span>
-            </div>
-          </div>
-        )}
-        
-        {/* Tips section */}
-        <div style={{
-          marginTop: 'auto',
-          backgroundColor: 'rgba(26, 10, 26, 0.7)',
-          padding: '16px',
-          borderRadius: '0px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
-          border: '1px solid #333'
-        }}>
-          <h4 style={{
-            margin: '0 0 16px 0',
-            fontSize: '18px',
-            color: '#E0E0E0',
-            fontWeight: '600',
-            textShadow: '0 0 8px rgba(233, 30, 99, 0.3)'
-          }}>How to Win Her Heart</h4>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '12px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              fontSize: '14px',
-              color: '#BBB'
-            }}>
-              <span style={{ 
-                marginRight: '10px', 
-                width: '24px', 
-                height: '24px', 
-                borderRadius: '50%', 
-                backgroundColor: 'rgba(233, 30, 99, 0.2)',
-                color: '#E91E63',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                border: '1px solid #E91E63'
-              }}>1</span>
-              <span>Basic greetings (+1)</span>
-            </div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              fontSize: '14px',
-              color: '#BBB'
-            }}>
-              <span style={{ 
-                marginRight: '10px', 
-                width: '24px', 
-                height: '24px', 
-                borderRadius: '50%', 
-                backgroundColor: 'rgba(156, 39, 176, 0.2)',
-                color: '#9C27B0',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                border: '1px solid #9C27B0'
-              }}>2</span>
-              <span>Show interest (+1~+3)</span>
-            </div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              fontSize: '14px',
-              color: '#BBB'
-            }}>
-              <span style={{ 
-                marginRight: '10px', 
-                width: '24px', 
-                height: '24px', 
-                borderRadius: '50%', 
-                backgroundColor: 'rgba(103, 58, 183, 0.2)',
-                color: '#673AB7',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                border: '1px solid #673AB7'
-              }}>3</span>
-              <span>Share about yourself (+1~+3)</span>
-            </div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              fontSize: '14px',
-              color: '#BBB'
-            }}>
-              <span style={{ 
-                marginRight: '10px', 
-                width: '24px', 
-                height: '24px', 
-                borderRadius: '50%', 
-                backgroundColor: 'rgba(63, 81, 181, 0.2)',
-                color: '#3F51B5',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                border: '1px solid #3F51B5'
-              }}>4</span>
-              <span>Be creative (+3~+6)</span>
-            </div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              fontSize: '14px',
-              color: '#BBB',
-              gridColumn: '1 / span 2'
-            }}>
-              <span style={{ 
-                marginRight: '10px', 
-                width: '24px', 
-                height: '24px', 
-                borderRadius: '50%', 
-                backgroundColor: 'rgba(233, 30, 99, 0.3)',
-                color: '#E91E63',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                border: '1px solid #E91E63',
-                boxShadow: '0 0 8px rgba(233, 30, 99, 0.4)'
-              }}>5</span>
-              <span>Sweet compliments (+5~+10)</span>
             </div>
           </div>
         </div>
