@@ -4,15 +4,13 @@ import {LoadResponse} from "@chub-ai/stages-ts/dist/types/load";
 
 // Define our state types
 type InitStateType = {
-  currentScore: number;
   currentLevel: number;
   currentState: string;
   isNSFWUnlocked: boolean;
-  totalXP: number;  // Added this property
+  totalXP: number;
 };
 
 type MessageStateType = {
-  previousScore: number;
   previousLevel: number;
   previousState: string;
   lastChange: number;
@@ -76,11 +74,11 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   
   // Internal state for the component
   myInternalState: {
-    currentScore: number;
     currentLevel: number;
     currentState: string;
     isNSFWUnlocked: boolean;
     totalXP: number;
+    currentScore: number;
     interactionHistory: Array<{
       message: string;
       scoreChange: number;
@@ -105,18 +103,18 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     } = data;
     
     // Initialize with default values if not provided
-    const currentScore = initState?.currentScore || 0; // Start at 0 (Zero state)
     const currentLevel = initState?.currentLevel || 1;
     const currentState = initState?.currentState || 'zero';
     const isNSFWUnlocked = initState?.isNSFWUnlocked || false;
     const totalXP = initState?.totalXP || 0;
+    const currentScore = initState?.currentScore || 0; // Start at 0 (Zero state)
     
     this.myInternalState = {
-      currentScore: currentScore,
       currentLevel: currentLevel,
       currentState: currentState,
       isNSFWUnlocked: isNSFWUnlocked,
       totalXP: totalXP,
+      currentScore: currentScore,
       interactionHistory: chatState?.interactionHistory || []
     };
   }
@@ -166,11 +164,11 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   async load(): Promise<Partial<LoadResponse<InitStateType, ChatStateType, MessageStateType>>> {
     // If we have saved state, restore it
     if (this.initialData.initState) {
-      this.myInternalState.currentScore = this.initialData.initState.currentScore || 0;
       this.myInternalState.currentLevel = this.initialData.initState.currentLevel || 1;
       this.myInternalState.currentState = this.initialData.initState.currentState || 'zero';
       this.myInternalState.isNSFWUnlocked = this.initialData.initState.isNSFWUnlocked || false;
       this.myInternalState.totalXP = this.initialData.initState.totalXP || 0;
+      this.myInternalState.currentScore = this.initialData.initState.currentScore || 0;
     }
     
     if (this.initialData.chatState && this.initialData.chatState.interactionHistory) {
@@ -181,11 +179,11 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       success: true,
       error: null,
       initState: {
-        currentScore: this.myInternalState.currentScore,
         currentLevel: this.myInternalState.currentLevel,
         currentState: this.myInternalState.currentState,
         isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
-        totalXP: this.myInternalState.totalXP
+        totalXP: this.myInternalState.totalXP,
+        currentScore: this.myInternalState.currentScore
       },
       chatState: {
         interactionHistory: this.myInternalState.interactionHistory
@@ -195,7 +193,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
 
   async setState(state: MessageStateType): Promise<void> {
     if (state != null) {
-      this.myInternalState.currentScore = state.previousScore;
       this.myInternalState.currentLevel = state.previousLevel;
       this.myInternalState.currentState = state.previousState;
     }
@@ -203,10 +200,10 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
 
   async beforePrompt(userMessage: Message): Promise<Partial<StageResponse<ChatStateType, MessageStateType>>> {
     const { content } = userMessage;
-    const previousScore = this.myInternalState.currentScore;
     const previousLevel = this.myInternalState.currentLevel;
     const previousState = this.myInternalState.currentState;
     const previousXP = this.myInternalState.totalXP;
+    const previousScore = this.myInternalState.currentScore;
     
     // Analyze the user message to determine score change
     const message = content.toLowerCase();
@@ -424,7 +421,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     
     return {
       messageState: {
-        previousScore: previousScore,
         previousLevel: previousLevel,
         previousState: previousState,
         lastChange: scoreChange,
@@ -441,7 +437,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     // Make sure we're saving the current state
     return {
       messageState: {
-        previousScore: this.myInternalState.currentScore,
         previousLevel: this.myInternalState.currentLevel,
         previousState: this.myInternalState.currentState,
         lastChange: 0,
@@ -454,7 +449,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   }
 
   render(): ReactElement {
-    const currentScore = this.myInternalState.currentScore;
     const currentLevel = this.myInternalState.currentLevel;
     const currentState = this.myInternalState.currentState;
     const totalXP = this.myInternalState.totalXP;
@@ -563,7 +557,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
           </div>
         </div>
         
-        {/* Score and XP Progress bars */}
+        {/* XP Progress bar */}
         <div style={{
           marginBottom: '20px',
           backgroundColor: 'rgba(26, 10, 26, 0.7)',
@@ -572,34 +566,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
           border: '1px solid #333'
         }}>
-          {/* Score Progress */}
-          <div style={{
-            fontSize: '14px',
-            color: '#BBB',
-            marginBottom: '8px'
-          }}>
-            Score: {currentScore} / 100
-          </div>
-          <div style={{
-            position: 'relative',
-            height: '20px',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            borderRadius: '0px',
-            overflow: 'hidden',
-            marginBottom: '16px',
-            border: '1px solid #333'
-          }}>
-            <div style={{
-              height: '100%',
-              width: `${currentScore}%`,
-              background: `linear-gradient(90deg, #4A148C 0%, #6A1B9A 20%, #9C27B0 40%, #E91E63 60%, #F50057 80%, #FF4081 100%)`,
-              transition: 'width 0.8s ease',
-              borderRadius: '0px',
-              boxShadow: `0 0 10px ${statusColor}60`
-            }} />
-          </div>
-          
-          {/* XP Progress */}
           <div style={{
             fontSize: '14px',
             color: '#BBB',
@@ -609,7 +575,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
           </div>
           <div style={{
             position: 'relative',
-            height: '20px',
+            height: '24px',
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
             borderRadius: '0px',
             overflow: 'hidden',
@@ -620,7 +586,9 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
               height: '100%',
               width: `${percentage}%`,
               background: `linear-gradient(90deg, #4A148C 0%, #6A1B9A 20%, #9C27B0 40%, #E91E63 60%, #F50057 80%, #FF4081 100%)`,
-              transition: 'width 0.8s ease',
+              backgroundSize: '200% 100%',
+              backgroundPosition: `${Math.max(0, Math.min(100, percentage))}% 0`,
+              transition: 'width 0.8s ease, background-position 0.8s ease',
               borderRadius: '0px',
               boxShadow: `0 0 10px ${statusColor}60`
             }} />
