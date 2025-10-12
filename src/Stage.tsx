@@ -420,6 +420,15 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       }
     }
     
+    // Save state using the saveState method
+    this.saveState({
+      currentLevel: this.myInternalState.currentLevel,
+      currentState: this.myInternalState.currentState,
+      isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
+      totalXP: this.myInternalState.totalXP,
+      currentScore: this.myInternalState.currentScore
+    });
+    
     return {
       messageState: {
         previousLevel: previousLevel,
@@ -430,19 +439,20 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       chatState: {
         interactionHistory: this.myInternalState.interactionHistory
       },
-      initState: {
-        currentLevel: this.myInternalState.currentLevel,
-        currentState: this.myInternalState.currentState,
-        isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
-        totalXP: this.myInternalState.totalXP,
-        currentScore: this.myInternalState.currentScore
-      },
       systemMessage: systemMessage
     };
   }
 
   async afterResponse(botMessage: Message): Promise<Partial<StageResponse<ChatStateType, MessageStateType>>> {
-    // Make sure we're saving the current state
+    // Save state using the saveState method
+    this.saveState({
+      currentLevel: this.myInternalState.currentLevel,
+      currentState: this.myInternalState.currentState,
+      isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
+      totalXP: this.myInternalState.totalXP,
+      currentScore: this.myInternalState.currentScore
+    });
+    
     return {
       messageState: {
         previousLevel: this.myInternalState.currentLevel,
@@ -452,13 +462,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       },
       chatState: {
         interactionHistory: this.myInternalState.interactionHistory
-      },
-      initState: {
-        currentLevel: this.myInternalState.currentLevel,
-        currentState: this.myInternalState.currentState,
-        isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
-        totalXP: this.myInternalState.totalXP,
-        currentScore: this.myInternalState.currentScore
       }
     };
   }
