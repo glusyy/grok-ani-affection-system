@@ -16,6 +16,12 @@ type MessageStateType = {
   previousState: string;
   lastChange: number;
   lastInteractionType: 'positive' | 'negative' | 'neutral';
+  // Add current state to messageState for persistence
+  currentLevel: number;
+  currentState: string;
+  isNSFWUnlocked: boolean;
+  totalXP: number;
+  currentScore: number;
 };
 
 type ChatStateType = {
@@ -104,11 +110,11 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     } = data;
     
     // Initialize with default values if not provided
-    const currentLevel = initState?.currentLevel || 1;
-    const currentState = initState?.currentState || 'zero';
-    const isNSFWUnlocked = initState?.isNSFWUnlocked || false;
-    const totalXP = initState?.totalXP || 0;
-    const currentScore = initState?.currentScore || 0; // Start at 0 (Zero state)
+    const currentLevel = initState?.currentLevel || messageState?.currentLevel || 1;
+    const currentState = initState?.currentState || messageState?.currentState || 'zero';
+    const isNSFWUnlocked = initState?.isNSFWUnlocked || messageState?.isNSFWUnlocked || false;
+    const totalXP = initState?.totalXP || messageState?.totalXP || 0;
+    const currentScore = initState?.currentScore || messageState?.currentScore || 0; // Start at 0 (Zero state)
     
     this.myInternalState = {
       currentLevel: currentLevel,
@@ -172,6 +178,15 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       this.myInternalState.currentScore = this.initialData.initState.currentScore || 0;
     }
     
+    // Also check messageState for persisted data
+    if (this.initialData.messageState) {
+      this.myInternalState.currentLevel = this.initialData.messageState.currentLevel || this.myInternalState.currentLevel;
+      this.myInternalState.currentState = this.initialData.messageState.currentState || this.myInternalState.currentState;
+      this.myInternalState.isNSFWUnlocked = this.initialData.messageState.isNSFWUnlocked || this.myInternalState.isNSFWUnlocked;
+      this.myInternalState.totalXP = this.initialData.messageState.totalXP || this.myInternalState.totalXP;
+      this.myInternalState.currentScore = this.initialData.messageState.currentScore || this.myInternalState.currentScore;
+    }
+    
     if (this.initialData.chatState && this.initialData.chatState.interactionHistory) {
       this.myInternalState.interactionHistory = this.initialData.chatState.interactionHistory;
     }
@@ -194,8 +209,12 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
 
   async setState(state: MessageStateType): Promise<void> {
     if (state != null) {
-      this.myInternalState.currentLevel = state.previousLevel;
-      this.myInternalState.currentState = state.previousState;
+      // Update both previous and current state
+      this.myInternalState.currentLevel = state.currentLevel || state.previousLevel;
+      this.myInternalState.currentState = state.currentState || state.previousState;
+      this.myInternalState.isNSFWUnlocked = state.isNSFWUnlocked || false;
+      this.myInternalState.totalXP = state.totalXP || 0;
+      this.myInternalState.currentScore = state.currentScore || 0;
     }
   }
 
@@ -425,7 +444,13 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         previousLevel: previousLevel,
         previousState: previousState,
         lastChange: scoreChange,
-        lastInteractionType: interactionType
+        lastInteractionType: interactionType,
+        // Include current state in messageState for persistence
+        currentLevel: this.myInternalState.currentLevel,
+        currentState: this.myInternalState.currentState,
+        isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
+        totalXP: this.myInternalState.totalXP,
+        currentScore: this.myInternalState.currentScore
       },
       chatState: {
         interactionHistory: this.myInternalState.interactionHistory
@@ -440,7 +465,13 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         previousLevel: this.myInternalState.currentLevel,
         previousState: this.myInternalState.currentState,
         lastChange: 0,
-        lastInteractionType: 'neutral'
+        lastInteractionType: 'neutral',
+        // Include current state in messageState for persistence
+        currentLevel: this.myInternalState.currentLevel,
+        currentState: this.myInternalState.currentState,
+        isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
+        totalXP: this.myInternalState.totalXP,
+        currentScore: this.myInternalState.currentScore
       },
       chatState: {
         interactionHistory: this.myInternalState.interactionHistory
