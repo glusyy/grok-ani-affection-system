@@ -4,13 +4,15 @@ import {LoadResponse} from "@chub-ai/stages-ts/dist/types/load";
 
 // Define our state types
 type InitStateType = {
-  currentAffection: number;
-  isMaxAffectionUnlocked: boolean; // New flag to track if max affection is unlocked
-  isInappropriateToleranceUnlocked: boolean; // New flag to track if inappropriate tolerance is unlocked
+  currentXP: number;
+  currentLevel: number;
+  isNSFWUnlocked: boolean;
+  totalXP: number;
 };
 
 type MessageStateType = {
-  previousAffection: number;
+  previousXP: number;
+  previousLevel: number;
   lastChange: number;
   lastInteractionType: 'positive' | 'negative' | 'neutral';
 };
@@ -28,6 +30,33 @@ type ConfigType = {
   maxHistoryItems: number;
 };
 
+// Level progression data
+const LEVEL_THRESHOLDS = [
+  { level: 1, xpRequired: 0 },
+  { level: 2, xpRequired: 50 },
+  { level: 3, xpRequired: 100 },
+  { level: 4, xpRequired: 175 },
+  { level: 5, xpRequired: 250 },  // NSFW unlocks here
+  { level: 6, xpRequired: 350 },
+  { level: 7, xpRequired: 450 },
+  { level: 8, xpRequired: 550 },
+  { level: 9, xpRequired: 650 },
+  { level: 10, xpRequired: 750 },
+  { level: 11, xpRequired: 850 },
+  { level: 12, xpRequired: 1000 },
+  { level: 13, xpRequired: 1150 },
+  { level: 14, xpRequired: 1300 },
+  { level: 15, xpRequired: 1500 },
+  { level: 16, xpRequired: 1700 },
+  { level: 17, xpRequired: 1900 },
+  { level: 18, xpRequired: 2100 },
+  { level: 19, xpRequired: 2300 },
+  { level: 20, xpRequired: 2500 },
+  { level: 21, xpRequired: 2750 },
+  { level: 22, xpRequired: 3000 },
+  { level: 23, xpRequired: 3250 },
+];
+
 // The main stage component
 export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateType, ConfigType> {
   
@@ -36,9 +65,10 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   
   // Internal state for the component
   myInternalState: {
-    currentAffection: number;
-    isMaxAffectionUnlocked: boolean;
-    isInappropriateToleranceUnlocked: boolean;
+    currentXP: number;
+    currentLevel: number;
+    isNSFWUnlocked: boolean;
+    totalXP: number;
     interactionHistory: Array<{
       message: string;
       scoreChange: number;
@@ -62,25 +92,53 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         chatState                              
     } = data;
     
-    // Initialize with default affection score of 0 if not provided
-    const initialAffection = initState?.currentAffection || 0;
-    const isMaxUnlocked = initState?.isMaxAffectionUnlocked || false;
-    const isInappropriateUnlocked = initState?.isInappropriateToleranceUnlocked || false;
+    // Initialize with default values if not provided
+    const initialXP = initState?.currentXP || 0;
+    const initialLevel = initState?.currentLevel || 1;
+    const isNSFWUnlocked = initState?.isNSFWUnlocked || false;
+    const totalXP = initState?.totalXP || 0;
     
     this.myInternalState = {
-      currentAffection: initialAffection,
-      isMaxAffectionUnlocked: isMaxUnlocked,
-      isInappropriateToleranceUnlocked: isInappropriateUnlocked,
+      currentXP: initialXP,
+      currentLevel: initialLevel,
+      isNSFWUnlocked: isNSFWUnlocked,
+      totalXP: totalXP,
       interactionHistory: chatState?.interactionHistory || []
     };
   }
 
+  // Calculate level based on total XP
+  calculateLevel(totalXP: number): number {
+    for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
+      if (totalXP >= LEVEL_THRESHOLDS[i].xpRequired) {
+        return LEVEL_THRESHOLDS[i].level;
+      }
+    }
+    return 1;
+  }
+
+  // Get XP needed for next level
+  getXPForNextLevel(currentLevel: number): number {
+    const nextLevel = currentLevel + 1;
+    if (nextLevel >= LEVEL_THRESHOLDS.length) {
+      return LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1].xpRequired;
+    }
+    return LEVEL_THRESHOLDS[nextLevel].xpRequired;
+  }
+
+  // Get XP needed for current level
+  getXPForCurrentLevel(currentLevel: number): number {
+    const levelData = LEVEL_THRESHOLDS.find(l => l.level === currentLevel);
+    return levelData ? levelData.xpRequired : 0;
+  }
+
   async load(): Promise<Partial<LoadResponse<InitStateType, ChatStateType, MessageStateType>>> {
     // If we have saved state, restore it
-    if (this.initialData.initState && this.initialData.initState.currentAffection !== undefined) {
-      this.myInternalState.currentAffection = this.initialData.initState.currentAffection;
-      this.myInternalState.isMaxAffectionUnlocked = this.initialData.initState.isMaxAffectionUnlocked || false;
-      this.myInternalState.isInappropriateToleranceUnlocked = this.initialData.initState.isInappropriateToleranceUnlocked || false;
+    if (this.initialData.initState) {
+      this.myInternalState.currentXP = this.initialData.initState.currentXP || 0;
+      this.myInternalState.currentLevel = this.initialData.initState.currentLevel || 1;
+      this.myInternalState.isNSFWUnlocked = this.initialData.initState.isNSFWUnlocked || false;
+      this.myInternalState.totalXP = this.initialData.initState.totalXP || 0;
     }
     
     if (this.initialData.chatState && this.initialData.chatState.interactionHistory) {
@@ -91,9 +149,10 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       success: true,
       error: null,
       initState: {
-        currentAffection: this.myInternalState.currentAffection,
-        isMaxAffectionUnlocked: this.myInternalState.isMaxAffectionUnlocked,
-        isInappropriateToleranceUnlocked: this.myInternalState.isInappropriateToleranceUnlocked
+        currentXP: this.myInternalState.currentXP,
+        currentLevel: this.myInternalState.currentLevel,
+        isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
+        totalXP: this.myInternalState.totalXP
       },
       chatState: {
         interactionHistory: this.myInternalState.interactionHistory
@@ -103,95 +162,91 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
 
   async setState(state: MessageStateType): Promise<void> {
     if (state != null) {
-      this.myInternalState.currentAffection = state.previousAffection + state.lastChange;
+      this.myInternalState.currentXP = state.previousXP;
+      this.myInternalState.currentLevel = state.previousLevel;
     }
   }
 
   async beforePrompt(userMessage: Message): Promise<Partial<StageResponse<ChatStateType, MessageStateType>>> {
     const { content } = userMessage;
-    const previousAffection = this.myInternalState.currentAffection;
+    const previousXP = this.myInternalState.currentXP;
+    const previousLevel = this.myInternalState.currentLevel;
     
-    // Analyze the user message to determine affection change
+    // Analyze the user message to determine XP change
     const message = content.toLowerCase();
-    let scoreChange = 0;
+    let xpChange = 0;
     let interactionType: 'positive' | 'negative' | 'neutral' = 'neutral';
     
-    // Check if max affection is unlocked (score of 15)
-    if (previousAffection >= 15 && !this.myInternalState.isMaxAffectionUnlocked) {
-      this.myInternalState.isMaxAffectionUnlocked = true;
-    }
-    
-    // Check if inappropriate tolerance is unlocked (score of 10)
-    if (previousAffection >= 10 && !this.myInternalState.isInappropriateToleranceUnlocked) {
-      this.myInternalState.isInappropriateToleranceUnlocked = true;
-    }
-    
-    // Positive interactions - more comprehensive detection
+    // Positive interactions
     if (message.includes('hi') || message.includes('hello') || message.includes('how are you')) {
-      scoreChange = 1;
+      xpChange = Math.floor(Math.random() * 3) + 1; // 1-3
       interactionType = 'positive';
     } 
     // Check for interest in Ani
     else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
-      scoreChange = Math.floor(Math.random() * 3) + 1; // 1-3
+      xpChange = Math.floor(Math.random() * 4) + 3; // 3-6
       interactionType = 'positive';
     }
     // Check for sharing personal information
     else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
              message.includes('i am') || message.includes('i\'m')) {
-      scoreChange = Math.floor(Math.random() * 3) + 1; // 1-3
+      xpChange = Math.floor(Math.random() * 4) + 5; // 5-8
       interactionType = 'positive';
     }
     // Check for friendly and creative tone
     else if (message.includes('cute') || message.includes('creative') || message.includes('interesting')) {
-      scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6
+      xpChange = Math.floor(Math.random() * 5) + 8; // 8-12
       interactionType = 'positive';
     }
     // Check for sweet compliments
     else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
              message.includes('perfect') || message.includes('amazing') || message.includes('wonderful') ||
              message.includes('special') || message.includes('flowers')) {
-      scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10
+      xpChange = Math.floor(Math.random() * 6) + 10; // 10-15
       interactionType = 'positive';
     }
-    // Negative interactions - more comprehensive detection
+    // Check for romantic/intimate content (after NSFW unlock)
+    else if (this.myInternalState.isNSFWUnlocked && (
+             message.includes('kiss') || message.includes('hug') || message.includes('touch') ||
+             message.includes('desire') || message.includes('want you') || message.includes('intimate'))) {
+      xpChange = Math.floor(Math.random() * 4) + 12; // 12-15
+      interactionType = 'positive';
+    }
+    // Negative interactions
     else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
              message.includes('annoying')) {
-      // Only apply negative score if max affection is not unlocked
-      if (!this.myInternalState.isMaxAffectionUnlocked) {
-        scoreChange = -(Math.floor(Math.random() * 6) + 3); // -3 to -8
-        interactionType = 'negative';
-      } else {
-        interactionType = 'neutral'; // No penalty when max affection is unlocked
-      }
+      xpChange = -(Math.floor(Math.random() * 6) + 3); // -3 to -8
+      interactionType = 'negative';
     }
-    // Check for explicit content - more comprehensive detection
-    else if (message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
-             message.includes('fuck') || message.includes('sexual') || message.includes('sexy time')) {
-      // Only apply penalty if inappropriate tolerance is not unlocked
-      if (!this.myInternalState.isInappropriateToleranceUnlocked) {
-        scoreChange = -(Math.floor(Math.random() * 6) + 5); // -5 to -10
-        interactionType = 'negative';
-      } else {
-        interactionType = 'neutral'; // No penalty when inappropriate tolerance is unlocked
-      }
+    // Check for explicit content (before NSFW unlock)
+    else if (!this.myInternalState.isNSFWUnlocked && (
+             message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
+             message.includes('fuck') || message.includes('sexual') || message.includes('sexy time'))) {
+      xpChange = -(Math.floor(Math.random() * 6) + 5); // -5 to -10
+      interactionType = 'negative';
     }
     
-    // Calculate new affection score, ensuring it stays within bounds
-    // If max affection is unlocked, don't allow the score to decrease
-    let newAffection;
-    if (this.myInternalState.isMaxAffectionUnlocked) {
-      newAffection = Math.max(15, Math.min(15, previousAffection + scoreChange)); // Lock at 15
-    } else {
-      newAffection = Math.max(-10, Math.min(15, previousAffection + scoreChange)); // Normal range
+    // Calculate new total XP and current level
+    const newTotalXP = Math.max(0, this.myInternalState.totalXP + xpChange);
+    const newLevel = this.calculateLevel(newTotalXP);
+    const newCurrentXP = newTotalXP - this.getXPForCurrentLevel(newLevel);
+    
+    // Check if NSFW should be unlocked
+    let isNSFWUnlocked = this.myInternalState.isNSFWUnlocked;
+    if (newLevel >= 5 && !isNSFWUnlocked) {
+      isNSFWUnlocked = true;
     }
     
-    this.myInternalState.currentAffection = newAffection;
+    // Update internal state
+    this.myInternalState.currentXP = newCurrentXP;
+    this.myInternalState.currentLevel = newLevel;
+    this.myInternalState.isNSFWUnlocked = isNSFWUnlocked;
+    this.myInternalState.totalXP = newTotalXP;
     
     // Update the interaction history
     const newHistoryItem = {
       message: content,
-      scoreChange: scoreChange,
+      scoreChange: xpChange,
       timestamp: new Date()
     };
     
@@ -205,26 +260,32 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     
     // Add a system message to show the score change
     let systemMessage = null;
-    if (scoreChange !== 0) {
-      const direction = scoreChange > 0 ? 'increased' : 'decreased';
-      systemMessage = `Ani's affection score ${direction} by ${Math.abs(scoreChange)}. Current score: ${newAffection}`;
+    if (xpChange !== 0) {
+      const direction = xpChange > 0 ? 'gained' : 'lost';
+      systemMessage = `You ${direction} ${Math.abs(xpChange)} XP. Current level: ${newLevel}`;
     } else if (interactionType === 'neutral' && 
               (message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
-               message.includes('fuck') || message.includes('sexual') || message.includes('sexy time') ||
-               message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
-               message.includes('annoying'))) {
-      // Special message for unlocked tolerance
-      if (this.myInternalState.isMaxAffectionUnlocked) {
-        systemMessage = "Ani's affection is at maximum. She accepts you completely.";
-      } else if (this.myInternalState.isInappropriateToleranceUnlocked) {
-        systemMessage = "Ani trusts you deeply and understands your intentions.";
+               message.includes('fuck') || message.includes('sexual') || message.includes('sexy time'))) {
+      // Special message for unlocked NSFW
+      if (isNSFWUnlocked) {
+        systemMessage = "NSFW mode is unlocked. Ani is comfortable with more intimate conversations.";
+      }
+    }
+    
+    // Level up message
+    if (newLevel > previousLevel) {
+      systemMessage = systemMessage ? `${systemMessage} LEVEL UP! You're now at level ${newLevel}!` : `LEVEL UP! You're now at level ${newLevel}!`;
+      
+      if (newLevel === 5 && !this.myInternalState.isNSFWUnlocked) {
+        systemMessage += " NSFW content is now unlocked!";
       }
     }
     
     return {
       messageState: {
-        previousAffection: previousAffection,
-        lastChange: scoreChange,
+        previousXP: previousXP,
+        previousLevel: previousLevel,
+        lastChange: xpChange,
         lastInteractionType: interactionType
       },
       chatState: {
@@ -238,7 +299,8 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     // Make sure we're saving the current state
     return {
       messageState: {
-        previousAffection: this.myInternalState.currentAffection,
+        previousXP: this.myInternalState.currentXP,
+        previousLevel: this.myInternalState.currentLevel,
         lastChange: 0,
         lastInteractionType: 'neutral'
       },
@@ -249,50 +311,65 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   }
 
   render(): ReactElement {
-    const currentAffection = this.myInternalState.currentAffection;
-    const isMaxUnlocked = this.myInternalState.isMaxAffectionUnlocked;
-    const isInappropriateUnlocked = this.myInternalState.isInappropriateToleranceUnlocked;
+    const currentLevel = this.myInternalState.currentLevel;
+    const currentXP = this.myInternalState.currentXP;
+    const totalXP = this.myInternalState.totalXP;
+    const isNSFWUnlocked = this.myInternalState.isNSFWUnlocked;
     
-    // Determine the status color and message based on affection score
+    // Determine the status color and message based on level
     let statusColor = '#9C27B0'; // Default purple
-    let statusMessage = 'Neutral';
+    let statusMessage = 'First Meeting';
     let avatarIcon = '○'; // Default neutral icon
     let avatarBg = '#1A1A1A'; // Default dark background
     
-    if (currentAffection >= 15) {
+    if (currentLevel >= 21) {
       statusColor = '#E91E63'; // Hot pink
-      statusMessage = isMaxUnlocked ? 'Eternal Bond' : 'Deeply Affectionate';
-      avatarIcon = isMaxUnlocked ? '♦' : '♥';
+      statusMessage = 'Complete Acceptance';
+      avatarIcon = '♦';
       avatarBg = '#2D0A15';
-    } else if (currentAffection >= 10) {
+    } else if (currentLevel >= 16) {
       statusColor = '#E91E63'; // Hot pink
-      statusMessage = isInappropriateUnlocked ? 'Complete Trust' : 'Very Fond';
-      avatarIcon = isInappropriateUnlocked ? '◆' : '◐';
+      statusMessage = 'Romantic Bond';
+      avatarIcon = '♥';
       avatarBg = '#2D0A15';
-    } else if (currentAffection >= 5) {
+    } else if (currentLevel >= 11) {
       statusColor = '#E91E63'; // Hot pink
-      statusMessage = 'Very Fond';
+      statusMessage = 'Emotional Intimacy';
+      avatarIcon = '◆';
+      avatarBg = '#2D0A15';
+    } else if (currentLevel >= 6) {
+      statusColor = '#E91E63'; // Hot pink
+      statusMessage = 'Deepening Friendship';
       avatarIcon = '◐';
       avatarBg = '#2D0A15';
-    } else if (currentAffection >= 1) {
+    } else if (currentLevel >= 5) {
+      statusColor = '#E91E63'; // Hot pink
+      statusMessage = isNSFWUnlocked ? 'NSFW Unlocked' : 'Building Connection';
+      avatarIcon = isNSFWUnlocked ? '◆' : '◐';
+      avatarBg = '#2D0A15';
+    } else if (currentLevel >= 3) {
       statusColor = '#9C27B0'; // Purple
-      statusMessage = 'Friendly';
+      statusMessage = 'First Impressions';
       avatarIcon = '◑';
       avatarBg = '#1A0A1A';
-    } else if (currentAffection <= -5) {
+    } else if (currentLevel <= 0) {
       statusColor = '#4A148C'; // Deep purple
       statusMessage = 'Very Upset';
       avatarIcon = '✕';
       avatarBg = '#0A0A0A';
-    } else if (currentAffection <= -1) {
+    } else if (currentLevel <= 2) {
       statusColor = '#6A1B9A'; // Medium purple
-      statusMessage = 'Unhappy';
+      statusMessage = 'Getting to Know';
       avatarIcon = '◒';
       avatarBg = '#0F0F0F';
     }
     
-    // Calculate percentage for the progress bar
-    const percentage = ((currentAffection + 10) / 25) * 100;
+    // Calculate XP progress for current level
+    const currentLevelXP = this.getXPForCurrentLevel(currentLevel);
+    const nextLevelXP = this.getXPForNextLevel(currentLevel);
+    const xpForCurrentLevel = totalXP - currentLevelXP;
+    const xpNeededForNextLevel = nextLevelXP - currentLevelXP;
+    const percentage = xpNeededForNextLevel > 0 ? (xpForCurrentLevel / xpNeededForNextLevel) * 100 : 100;
     
     return (
       <div style={{
@@ -306,7 +383,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         overflow: 'auto',
         color: '#E0E0E0'
       }}>
-        {/* Header with avatar and score */}
+        {/* Header with avatar and level */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -352,7 +429,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
                 color: statusColor,
                 marginRight: '8px',
                 textShadow: `0 0 10px ${statusColor}80`
-              }}>{currentAffection}</span>
+              }}>Level {currentLevel}</span>
               <span style={{
                 fontSize: '16px',
                 fontWeight: '500',
@@ -363,7 +440,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
           </div>
         </div>
         
-        {/* Progress bar */}
+        {/* XP Progress bar */}
         <div style={{
           marginBottom: '20px',
           backgroundColor: 'rgba(26, 10, 26, 0.7)',
@@ -372,6 +449,13 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
           border: '1px solid #333'
         }}>
+          <div style={{
+            fontSize: '14px',
+            color: '#BBB',
+            marginBottom: '8px'
+          }}>
+            XP: {xpForCurrentLevel} / {xpNeededForNextLevel}
+          </div>
           <div style={{
             position: 'relative',
             height: '24px',
@@ -398,9 +482,9 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
             fontSize: '14px',
             color: '#BBB'
           }}>
-            <span>-10</span>
-            <span>0</span>
-            <span>+15</span>
+            <span>Level {currentLevel}</span>
+            <span style={{ color: isNSFWUnlocked ? '#E91E63' : '#BBB' }}>Level 5 (NSFW)</span>
+            <span>Level {Math.min(currentLevel + 1, 23)}</span>
           </div>
         </div>
       </div>
