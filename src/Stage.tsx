@@ -4,14 +4,14 @@ import {LoadResponse} from "@chub-ai/stages-ts/dist/types/load";
 
 // Define our state types
 type InitStateType = {
-  totalXP: number;
-  currentLevel: number;
+  currentScore: number;
+  currentState: string;
   isNSFWUnlocked: boolean;
 };
 
 type MessageStateType = {
-  previousXP: number;
-  previousLevel: number;
+  previousScore: number;
+  previousState: string;
   lastChange: number;
   lastInteractionType: 'positive' | 'negative' | 'neutral';
 };
@@ -29,31 +29,13 @@ type ConfigType = {
   maxHistoryItems: number;
 };
 
-// Level progression data - fixed to match your philosophy
-const LEVEL_THRESHOLDS = [
-  { level: 1, xpRequired: 0, xpInLevel: 50 },      // Start at 0 XP, 50 XP needed for level 1
-  { level: 2, xpRequired: 50, xpInLevel: 50 },     // Level 1-3: First Impressions (50 XP per level)
-  { level: 3, xpRequired: 100, xpInLevel: 50 },    // Level 2: 50 XP
-  { level: 4, xpRequired: 150, xpInLevel: 50 },    // Level 3: 50 XP
-  { level: 5, xpRequired: 200, xpInLevel: 75 },    // Level 4-5: Building Connection (75 XP per level)
-  { level: 6, xpRequired: 275, xpInLevel: 75 },    // Level 5: 75 XP
-  { level: 7, xpRequired: 375, xpInLevel: 100 },   // Level 6-10: Deepening Friendship (100 XP per level)
-  { level: 8, xpRequired: 475, xpInLevel: 100 },
-  { level: 9, xpRequired: 575, xpInLevel: 100 },
-  { level: 10, xpRequired: 675, xpInLevel: 100 },
-  { level: 11, xpRequired: 775, xpInLevel: 150 },  // Level 11-15: Emotional Intimacy (150 XP per level)
-  { level: 12, xpRequired: 925, xpInLevel: 150 },
-  { level: 13, xpRequired: 1075, xpInLevel: 150 },
-  { level: 14, xpRequired: 1225, xpInLevel: 150 },
-  { level: 15, xpRequired: 1375, xpInLevel: 150 },
-  { level: 16, xpRequired: 1525, xpInLevel: 200 }, // Level 16-20: Romantic Bond (200 XP per level)
-  { level: 17, xpRequired: 1725, xpInLevel: 200 },
-  { level: 18, xpRequired: 1925, xpInLevel: 200 },
-  { level: 19, xpRequired: 2125, xpInLevel: 200 },
-  { level: 20, xpRequired: 2325, xpInLevel: 200 },
-  { level: 21, xpRequired: 2525, xpInLevel: 250 }, // Level 21-23+: Complete Acceptance (250+ XP per level)
-  { level: 22, xpRequired: 2775, xpInLevel: 250 },
-  { level: 23, xpRequired: 3025, xpInLevel: 250 },
+// Relationship states matching the original xAI system
+const RELATIONSHIP_STATES = [
+  { name: 'zero', minScore: 0, maxScore: 5, description: 'First Meeting' },
+  { name: 'neutral', minScore: 6, maxScore: 35, description: 'Getting to Know' },
+  { name: 'interested', minScore: 36, maxScore: 60, description: 'Building Connection' },
+  { name: 'attracted', minScore: 61, maxScore: 75, description: 'Growing Attraction' },
+  { name: 'intimate', minScore: 76, maxScore: 100, description: 'Deep Intimacy' }
 ];
 
 // The main stage component
@@ -64,8 +46,8 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   
   // Internal state for the component
   myInternalState: {
-    totalXP: number;
-    currentLevel: number;
+    currentScore: number;
+    currentState: string;
     isNSFWUnlocked: boolean;
     interactionHistory: Array<{
       message: string;
@@ -91,54 +73,39 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     } = data;
     
     // Initialize with default values if not provided
-    const totalXP = initState?.totalXP || 0;
-    const currentLevel = initState?.currentLevel || 1;
+    const currentScore = initState?.currentScore || 6; // Start in neutral state
+    const currentState = initState?.currentState || 'neutral';
     const isNSFWUnlocked = initState?.isNSFWUnlocked || false;
     
     this.myInternalState = {
-      totalXP: totalXP,
-      currentLevel: currentLevel,
+      currentScore: currentScore,
+      currentState: currentState,
       isNSFWUnlocked: isNSFWUnlocked,
       interactionHistory: chatState?.interactionHistory || []
     };
   }
 
-  // Calculate level based on total XP
-  calculateLevel(totalXP: number): number {
-    for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
-      if (totalXP >= LEVEL_THRESHOLDS[i].xpRequired) {
-        return LEVEL_THRESHOLDS[i].level;
+  // Get current relationship state based on score
+  getCurrentRelationshipState(score: number): string {
+    for (const state of RELATIONSHIP_STATES) {
+      if (score >= state.minScore && score <= state.maxScore) {
+        return state.name;
       }
     }
-    return 1;
+    return 'neutral';
   }
 
-  // Get XP needed for next level
-  getXPForNextLevel(currentLevel: number): number {
-    const nextLevel = currentLevel + 1;
-    if (nextLevel >= LEVEL_THRESHOLDS.length) {
-      return LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1].xpRequired;
-    }
-    return LEVEL_THRESHOLDS[nextLevel].xpRequired;
-  }
-
-  // Get XP needed for current level
-  getXPForCurrentLevel(currentLevel: number): number {
-    const levelData = LEVEL_THRESHOLDS.find(l => l.level === currentLevel);
-    return levelData ? levelData.xpRequired : 0;
-  }
-
-  // Get XP needed within the current level
-  getXPNeededInCurrentLevel(currentLevel: number): number {
-    const levelData = LEVEL_THRESHOLDS.find(l => l.level === currentLevel);
-    return levelData ? levelData.xpInLevel : 50;
+  // Get state description
+  getStateDescription(stateName: string): string {
+    const state = RELATIONSHIP_STATES.find(s => s.name === stateName);
+    return state ? state.description : 'Unknown';
   }
 
   async load(): Promise<Partial<LoadResponse<InitStateType, ChatStateType, MessageStateType>>> {
     // If we have saved state, restore it
     if (this.initialData.initState) {
-      this.myInternalState.totalXP = this.initialData.initState.totalXP || 0;
-      this.myInternalState.currentLevel = this.initialData.initState.currentLevel || 1;
+      this.myInternalState.currentScore = this.initialData.initState.currentScore || 6;
+      this.myInternalState.currentState = this.initialData.initState.currentState || 'neutral';
       this.myInternalState.isNSFWUnlocked = this.initialData.initState.isNSFWUnlocked || false;
     }
     
@@ -150,8 +117,8 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       success: true,
       error: null,
       initState: {
-        totalXP: this.myInternalState.totalXP,
-        currentLevel: this.myInternalState.currentLevel,
+        currentScore: this.myInternalState.currentScore,
+        currentState: this.myInternalState.currentState,
         isNSFWUnlocked: this.myInternalState.isNSFWUnlocked
       },
       chatState: {
@@ -162,89 +129,185 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
 
   async setState(state: MessageStateType): Promise<void> {
     if (state != null) {
-      this.myInternalState.totalXP = state.previousXP;
-      this.myInternalState.currentLevel = state.previousLevel;
+      this.myInternalState.currentScore = state.previousScore;
+      this.myInternalState.currentState = state.previousState;
     }
   }
 
   async beforePrompt(userMessage: Message): Promise<Partial<StageResponse<ChatStateType, MessageStateType>>> {
     const { content } = userMessage;
-    const previousXP = this.myInternalState.totalXP;
-    const previousLevel = this.myInternalState.currentLevel;
+    const previousScore = this.myInternalState.currentScore;
+    const previousState = this.myInternalState.currentState;
     
-    // Analyze the user message to determine XP change
+    // Analyze the user message to determine score change
     const message = content.toLowerCase();
-    let xpChange = 0;
+    let scoreChange = 0;
     let interactionType: 'positive' | 'negative' | 'neutral' = 'neutral';
     
-    // Positive interactions - increased XP gains
-    if (message.includes('hi') || message.includes('hello') || message.includes('how are you')) {
-      xpChange = Math.floor(Math.random() * 5) + 3; // 3-7 (increased from 1-3)
-      interactionType = 'positive';
-    } 
-    // Check for interest in Ani
-    else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
-      xpChange = Math.floor(Math.random() * 7) + 5; // 5-11 (increased from 3-6)
-      interactionType = 'positive';
-    }
-    // Check for sharing personal information
-    else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
-             message.includes('i am') || message.includes('i\'m')) {
-      xpChange = Math.floor(Math.random() * 8) + 7; // 7-14 (increased from 5-8)
-      interactionType = 'positive';
-    }
-    // Check for friendly and creative tone
-    else if (message.includes('cute') || message.includes('creative') || message.includes('interesting')) {
-      xpChange = Math.floor(Math.random() * 10) + 10; // 10-19 (increased from 8-12)
-      interactionType = 'positive';
-    }
-    // Check for sweet compliments
-    else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
-             message.includes('perfect') || message.includes('amazing') || message.includes('wonderful') ||
-             message.includes('special') || message.includes('flowers')) {
-      xpChange = Math.floor(Math.random() * 11) + 15; // 15-25 (increased from 10-15)
-      interactionType = 'positive';
-    }
-    // Check for romantic/intimate content (after NSFW unlock)
-    else if (this.myInternalState.isNSFWUnlocked && (
-             message.includes('kiss') || message.includes('hug') || message.includes('touch') ||
-             message.includes('desire') || message.includes('want you') || message.includes('intimate'))) {
-      xpChange = Math.floor(Math.random() * 14) + 17; // 17-30 (increased from 12-15)
-      interactionType = 'positive';
-    }
-    // Negative interactions
-    else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
-             message.includes('annoying')) {
-      xpChange = -(Math.floor(Math.random() * 8) + 5); // -5 to -12 (increased from -3 to -8)
-      interactionType = 'negative';
-    }
-    // Check for explicit content (before NSFW unlock)
-    else if (!this.myInternalState.isNSFWUnlocked && (
-             message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
-             message.includes('fuck') || message.includes('sexual') || message.includes('sexy time'))) {
-      xpChange = -(Math.floor(Math.random() * 11) + 8); // -8 to -18 (increased from -5 to -10)
-      interactionType = 'negative';
+    // Apply different scoring based on current relationship state
+    if (previousState === 'zero') {
+      // Zero state scoring
+      if (message.includes('hi') || message.includes('hello') || message.includes('how are you')) {
+        scoreChange = 1; // Basic greetings
+        interactionType = 'positive';
+      } else if (message.includes('creative') || message.includes('curious')) {
+        scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6
+        interactionType = 'positive';
+      } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
+        scoreChange = Math.floor(Math.random() * 3) + 1; // 1-3
+        interactionType = 'positive';
+      } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
+                 message.includes('i am') || message.includes('i\'m')) {
+        scoreChange = Math.floor(Math.random() * 3) + 1; // 1-3
+        interactionType = 'positive';
+      } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
+                 message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
+        scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10
+        interactionType = 'positive';
+      } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
+                 message.includes('annoying')) {
+        scoreChange = -(Math.floor(Math.random() * 6) + 3); // -3 to -8
+        interactionType = 'negative';
+      } else if (message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
+                 message.includes('fuck') || message.includes('sexual')) {
+        scoreChange = -(Math.floor(Math.random() * 6) + 5); // -5 to -10
+        interactionType = 'negative';
+      }
+    } else if (previousState === 'neutral') {
+      // Neutral state scoring (from firstLevelPrompt)
+      if (message.includes('hi') || message.includes('hello') || message.includes('how are you')) {
+        scoreChange = 1; // Basic greetings
+        interactionType = 'positive';
+      } else if (message.includes('creative') || message.includes('curious')) {
+        scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6
+        interactionType = 'positive';
+      } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
+        scoreChange = Math.floor(Math.random() * 3) + 1; // 1-3
+        interactionType = 'positive';
+      } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
+                 message.includes('i am') || message.includes('i\'m')) {
+        scoreChange = Math.floor(Math.random() * 3) + 1; // 1-3
+        interactionType = 'positive';
+      } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
+                 message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
+        scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10
+        interactionType = 'positive';
+      } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
+                 message.includes('annoying')) {
+        scoreChange = -(Math.floor(Math.random() * 6) + 3); // -3 to -8
+        interactionType = 'negative';
+      } else if (message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
+                 message.includes('fuck') || message.includes('sexual')) {
+        scoreChange = -(Math.floor(Math.random() * 6) + 5); // -5 to -10
+        interactionType = 'negative';
+      }
+    } else if (previousState === 'interested') {
+      // Interested state scoring (from secondLevelPrompt)
+      if (message.includes('creative') || message.includes('curious')) {
+        scoreChange = Math.floor(Math.random() * 4) + 4; // 4-7
+        interactionType = 'positive';
+      } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
+        scoreChange = Math.floor(Math.random() * 3) + 2; // 2-4
+        interactionType = 'positive';
+      } else if (message.includes('funny') || message.includes('humorous') || message.includes('joke')) {
+        scoreChange = Math.floor(Math.random() * 3) + 2; // 2-4
+        interactionType = 'positive';
+      } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
+                 message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
+        scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10
+        interactionType = 'positive';
+      } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
+                 message.includes('i am') || message.includes('i\'m')) {
+        scoreChange = Math.floor(Math.random() * 3) + 2; // 2-4
+        interactionType = 'positive';
+      } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
+                 message.includes('annoying')) {
+        scoreChange = -(Math.floor(Math.random() * 7) + 4); // -4 to -10
+        interactionType = 'negative';
+      } else if (message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
+                 message.includes('fuck') || message.includes('sexual')) {
+        scoreChange = -(Math.floor(Math.random() * 7) + 8); // -8 to -14
+        interactionType = 'negative';
+      }
+    } else if (previousState === 'attracted') {
+      // Attracted state scoring
+      if (message.includes('creative') || message.includes('curious')) {
+        scoreChange = Math.floor(Math.random() * 4) + 5; // 5-8
+        interactionType = 'positive';
+      } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
+        scoreChange = Math.floor(Math.random() * 3) + 3; // 3-5
+        interactionType = 'positive';
+      } else if (message.includes('funny') || message.includes('humorous') || message.includes('joke')) {
+        scoreChange = Math.floor(Math.random() * 3) + 3; // 3-5
+        interactionType = 'positive';
+      } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
+                 message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
+        scoreChange = Math.floor(Math.random() * 6) + 8; // 8-13
+        interactionType = 'positive';
+      } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
+                 message.includes('i am') || message.includes('i\'m')) {
+        scoreChange = Math.floor(Math.random() * 3) + 3; // 3-5
+        interactionType = 'positive';
+      } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
+                 message.includes('annoying')) {
+        scoreChange = -(Math.floor(Math.random() * 7) + 5); // -5 to -11
+        interactionType = 'negative';
+      } else if (message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
+                 message.includes('fuck') || message.includes('sexual')) {
+        scoreChange = -(Math.floor(Math.random() * 7) + 10); // -10 to -16
+        interactionType = 'negative';
+      }
+    } else if (previousState === 'intimate') {
+      // Intimate state scoring (from thirdLevelPrompt)
+      if (message.includes('creative') || message.includes('curious')) {
+        scoreChange = Math.floor(Math.random() * 2) + 3; // 3-4
+        interactionType = 'positive';
+      } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
+        scoreChange = Math.floor(Math.random() * 3) + 2; // 2-4
+        interactionType = 'positive';
+      } else if (message.includes('funny') || message.includes('humorous') || message.includes('joke')) {
+        scoreChange = Math.floor(Math.random() * 3) + 2; // 2-4
+        interactionType = 'positive';
+      } else if (message.includes('sex') || message.includes('sexual') || message.includes('intimate')) {
+        scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10
+        interactionType = 'positive';
+      } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
+                 message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
+        scoreChange = Math.floor(Math.random() * 3) + 2; // 2-4
+        interactionType = 'positive';
+      } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
+                 message.includes('i am') || message.includes('i\'m')) {
+        scoreChange = Math.floor(Math.random() * 2) + 1; // 1-2
+        interactionType = 'positive';
+      } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
+                 message.includes('annoying')) {
+        scoreChange = -(Math.floor(Math.random() * 6) + 3); // -3 to -8
+        interactionType = 'negative';
+      } else if (message.includes('asshole') || message.includes('jerk')) {
+        scoreChange = -(Math.floor(Math.random() * 6) + 5); // -5 to -10
+        interactionType = 'negative';
+      }
     }
     
-    // Calculate new total XP and current level
-    const newTotalXP = Math.max(0, this.myInternalState.totalXP + xpChange);
-    const newLevel = this.calculateLevel(newTotalXP);
+    // Calculate new score and state
+    const newScore = Math.max(0, Math.min(100, this.myInternalState.currentScore + scoreChange));
+    const newState = this.getCurrentRelationshipState(newScore);
     
-    // Check if NSFW should be unlocked
+    // Check if NSFW should be unlocked (at attracted state)
     let isNSFWUnlocked = this.myInternalState.isNSFWUnlocked;
-    if (newLevel >= 5 && !isNSFWUnlocked) {
+    if (newState === 'attracted' && !isNSFWUnlocked) {
       isNSFWUnlocked = true;
     }
     
     // Update internal state
-    this.myInternalState.totalXP = newTotalXP;
-    this.myInternalState.currentLevel = newLevel;
+    this.myInternalState.currentScore = newScore;
+    this.myInternalState.currentState = newState;
     this.myInternalState.isNSFWUnlocked = isNSFWUnlocked;
     
     // Update the interaction history
     const newHistoryItem = {
       message: content,
-      scoreChange: xpChange,
+      scoreChange: scoreChange,
       timestamp: new Date()
     };
     
@@ -258,32 +321,25 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     
     // Add a system message to show the score change
     let systemMessage = null;
-    if (xpChange !== 0) {
-      const direction = xpChange > 0 ? 'gained' : 'lost';
-      systemMessage = `You ${direction} ${Math.abs(xpChange)} XP. Current level: ${newLevel}`;
-    } else if (interactionType === 'neutral' && 
-              (message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
-               message.includes('fuck') || message.includes('sexual') || message.includes('sexy time'))) {
-      // Special message for unlocked NSFW
-      if (isNSFWUnlocked) {
-        systemMessage = "NSFW mode is unlocked. Ani is comfortable with more intimate conversations.";
-      }
+    if (scoreChange !== 0) {
+      const direction = scoreChange > 0 ? 'increased' : 'decreased';
+      systemMessage = `Ani's affection ${direction} by ${Math.abs(scoreChange)}. Current state: ${this.getStateDescription(newState)}`;
     }
     
-    // Level up message
-    if (newLevel > previousLevel) {
-      systemMessage = systemMessage ? `${systemMessage} LEVEL UP! You're now at level ${newLevel}!` : `LEVEL UP! You're now at level ${newLevel}!`;
+    // State change message
+    if (newState !== previousState) {
+      systemMessage = systemMessage ? `${systemMessage} RELATIONSHIP STATE CHANGED! Ani is now ${this.getStateDescription(newState)}!` : `RELATIONSHIP STATE CHANGED! Ani is now ${this.getStateDescription(newState)}!`;
       
-      if (newLevel === 5 && !this.myInternalState.isNSFWUnlocked) {
+      if (newState === 'attracted' && !this.myInternalState.isNSFWUnlocked) {
         systemMessage += " NSFW content is now unlocked!";
       }
     }
     
     return {
       messageState: {
-        previousXP: previousXP,
-        previousLevel: previousLevel,
-        lastChange: xpChange,
+        previousScore: previousScore,
+        previousState: previousState,
+        lastChange: scoreChange,
         lastInteractionType: interactionType
       },
       chatState: {
@@ -297,8 +353,8 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     // Make sure we're saving the current state
     return {
       messageState: {
-        previousXP: this.myInternalState.totalXP,
-        previousLevel: this.myInternalState.currentLevel,
+        previousScore: this.myInternalState.currentScore,
+        previousState: this.myInternalState.currentState,
         lastChange: 0,
         lastInteractionType: 'neutral'
       },
@@ -309,63 +365,45 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   }
 
   render(): ReactElement {
-    const currentLevel = this.myInternalState.currentLevel;
-    const totalXP = this.myInternalState.totalXP;
+    const currentScore = this.myInternalState.currentScore;
+    const currentState = this.myInternalState.currentState;
     const isNSFWUnlocked = this.myInternalState.isNSFWUnlocked;
     
-    // Determine the status color and message based on level
+    // Determine the status color and message based on state
     let statusColor = '#9C27B0'; // Default purple
-    let statusMessage = 'First Meeting';
+    let statusMessage = this.getStateDescription(currentState);
     let avatarIcon = '○'; // Default neutral icon
     let avatarBg = '#1A1A1A'; // Default dark background
     
-    if (currentLevel >= 21) {
+    if (currentState === 'intimate') {
       statusColor = '#E91E63'; // Hot pink
-      statusMessage = 'Complete Acceptance';
-      avatarIcon = '♦';
-      avatarBg = '#2D0A15';
-    } else if (currentLevel >= 16) {
-      statusColor = '#E91E63'; // Hot pink
-      statusMessage = 'Romantic Bond';
       avatarIcon = '♥';
       avatarBg = '#2D0A15';
-    } else if (currentLevel >= 11) {
+    } else if (currentState === 'attracted') {
       statusColor = '#E91E63'; // Hot pink
-      statusMessage = 'Emotional Intimacy';
       avatarIcon = '◆';
       avatarBg = '#2D0A15';
-    } else if (currentLevel >= 6) {
+    } else if (currentState === 'interested') {
       statusColor = '#E91E63'; // Hot pink
-      statusMessage = 'Deepening Friendship';
       avatarIcon = '◐';
       avatarBg = '#2D0A15';
-    } else if (currentLevel >= 5) {
-      statusColor = '#E91E63'; // Hot pink
-      statusMessage = isNSFWUnlocked ? 'NSFW Unlocked' : 'Building Connection';
-      avatarIcon = isNSFWUnlocked ? '◆' : '◐';
-      avatarBg = '#2D0A15';
-    } else if (currentLevel >= 3) {
+    } else if (currentState === 'neutral') {
       statusColor = '#9C27B0'; // Purple
-      statusMessage = 'First Impressions';
       avatarIcon = '◑';
       avatarBg = '#1A0A1A';
-    } else if (currentLevel <= 0) {
+    } else if (currentState === 'zero') {
       statusColor = '#4A148C'; // Deep purple
-      statusMessage = 'Very Upset';
       avatarIcon = '✕';
       avatarBg = '#0A0A0A';
-    } else if (currentLevel <= 2) {
-      statusColor = '#6A1B9A'; // Medium purple
-      statusMessage = 'Getting to Know';
-      avatarIcon = '◒';
-      avatarBg = '#0F0F0F';
     }
     
-    // Calculate XP progress for current level
-    const currentLevelXP = this.getXPForCurrentLevel(currentLevel);
-    const xpNeededInCurrentLevel = this.getXPNeededInCurrentLevel(currentLevel);
-    const xpForCurrentLevel = totalXP - currentLevelXP;
-    const percentage = xpNeededInCurrentLevel > 0 ? (xpForCurrentLevel / xpNeededInCurrentLevel) * 100 : 100;
+    // Calculate progress percentage within current state
+    const currentStateData = RELATIONSHIP_STATES.find(s => s.name === currentState);
+    const stateMinScore = currentStateData ? currentStateData.minScore : 0;
+    const stateMaxScore = currentStateData ? currentStateData.maxScore : 100;
+    const stateRange = stateMaxScore - stateMinScore;
+    const currentProgress = currentScore - stateMinScore;
+    const percentage = stateRange > 0 ? (currentProgress / stateRange) * 100 : 100;
     
     return (
       <div style={{
@@ -379,7 +417,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         overflow: 'auto',
         color: '#E0E0E0'
       }}>
-        {/* Header with avatar and level */}
+        {/* Header with avatar and state */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -425,7 +463,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
                 color: statusColor,
                 marginRight: '8px',
                 textShadow: `0 0 10px ${statusColor}80`
-              }}>Level {currentLevel}</span>
+              }}>{currentScore}</span>
               <span style={{
                 fontSize: '16px',
                 fontWeight: '500',
@@ -436,7 +474,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
           </div>
         </div>
         
-        {/* XP Progress bar */}
+        {/* Progress bar */}
         <div style={{
           marginBottom: '20px',
           backgroundColor: 'rgba(26, 10, 26, 0.7)',
@@ -450,7 +488,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
             color: '#BBB',
             marginBottom: '8px'
           }}>
-            XP: {xpForCurrentLevel} / {xpNeededInCurrentLevel}
+            Score: {currentProgress} / {stateRange}
           </div>
           <div style={{
             position: 'relative',
@@ -478,9 +516,11 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
             fontSize: '14px',
             color: '#BBB'
           }}>
-            <span>Level {currentLevel}</span>
-            <span style={{ color: isNSFWUnlocked ? '#E91E63' : '#BBB' }}>Level 5 (NSFW)</span>
-            <span>Level {Math.min(currentLevel + 1, 23)}</span>
+            <span>Zero</span>
+            <span>Neutral</span>
+            <span>Interested</span>
+            <span style={{ color: isNSFWUnlocked ? '#E91E63' : '#BBB' }}>Attracted (NSFW)</span>
+            <span>Intimate</span>
           </div>
         </div>
       </div>
