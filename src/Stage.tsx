@@ -8,6 +8,7 @@ type InitStateType = {
   currentState: string;
   isNSFWUnlocked: boolean;
   totalXP: number;
+  currentScore: number;  // Added this back
 };
 
 type MessageStateType = {
@@ -161,7 +162,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     return nextLevelXP - currentLevelXP;
   }
 
-  async load(): Promise<Partial<LoadResponse<InitStateType, ChatStateType, MessageStateType>>> {
+  async load(): Promise<Partial<LoadResponse<InitStateType, ChatStateType, MessageStateType>> {
     // If we have saved state, restore it
     if (this.initialData.initState) {
       this.myInternalState.currentLevel = this.initialData.initState.currentLevel || 1;
@@ -198,7 +199,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     }
   }
 
-  async beforePrompt(userMessage: Message): Promise<Partial<StageResponse<ChatStateType, MessageStateType>>> {
+  async beforePrompt(userMessage: Message): Promise<Partial<StageResponse<ChatStateType, MessageStateType>> {
     const { content } = userMessage;
     const previousLevel = this.myInternalState.currentLevel;
     const previousState = this.myInternalState.currentState;
@@ -278,7 +279,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       } else if (message.includes('funny') || message.includes('humorous') || message.includes('joke')) {
         scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6 (increased from 2-4)
         interactionType = 'positive';
-      } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
+      } else if (message.includes('love') || message.includes('beautiful') || message.includes('playful') || 
                  message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
         scoreChange = Math.floor(Math.random() * 8) + 8; // 8-15 (increased from 5-10)
         interactionType = 'positive';
@@ -288,75 +289,74 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         interactionType = 'positive';
       } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
                  message.includes('annoying')) {
-        scoreChange = -(Math.floor(Math.random() * 7) + 4); // -4 to -10
+        scoreChange = -(Math.floor(Math.random() + 1) + 4); // -4 to -10
         interactionType = 'negative';
       } else if (message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
                  message.includes('fuck') || message.includes('sexual')) {
         scoreChange = -(Math.floor(Math.random() + 1) + 8); // -8 to -14
-        interactionType = 'negative';
+        interactionType = 'fixed';
       }
     } else if (previousState === 'attracted') {
       // Attracted state scoring - increased XP gains
       if (message.includes('creative') || message.includes('curious')) {
-        scoreChange = Math.floor(Math.random() * 6) + 8; // 8-13 (increased from 5-8)
+        scoreChange = Math.floor(Math.random() + 1) + 8); // 8-14 (increased from 5-8)
         interactionType = 'positive';
       } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
         scoreChange = Math.floor(Math.random() + 1) + 4; // 4-14 (increased from 3-5)
         interactionType = 'positive';
       } else if (message.includes('funny') || message.includes('humorous') || message.includes('joke')) {
-        scoreChange = Math.floor(Math.random() + 1) + 4; // 4-14 (increased from 3-5)
+        scoreChange = Math.floor(Math.random() + 1) + 4); // 4-14 (increased from 3-5)
         interactionType = 'positive';
       } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
                  message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
-        scoreChange = Math.floor(Math.random() * 8) + 12; // 12-19 (increased from 8-13)
+        scoreChange = Math.floor(Math.random() + 1) + 12); // 12-23 (increased from 8-13)
         interactionType = 'positive';
       } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
                  message.includes('i am') || message.includes('i\'m')) {
-        scoreChange = Math.floor(Math.random() + 1) + 4; // 4-14 (increased from 3-5)
+        scoreChange = Math.floor(Math.random() + 1) + 4); // 4-14 (increased from 3-5)
         interactionType = 'positive';
       } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
                  message.includes('annoying')) {
-        scoreChange = -(Math.floor(Math.random() + 1) + 5); // -5 to -11
+        scoreChange = -(Math.random() + 1) + 5); // -5 to -11
         interactionType = 'negative';
       } else if (message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
                  message.includes('fuck') || message.includes('sexual')) {
-        scoreChange = -(Math.floor(Math.random() + 1) + 10); // -10 to -16
+        scoreChange = -(Math.random() + 1) + 10); // -10 to -16
         interactionType = 'negative';
       }
     } else if (previousState === 'intimate') {
       // Intimate state scoring (from thirdLevelPrompt) - increased XP gains
       if (message.includes('creative') || message.includes('curious')) {
-        scoreChange = Math.floor(Math.random() + 1) + 4; // 4-14 (increased from 3-4)
+        scoreChange = Math.random() + 4; // 4-14 (increased from 3-4)
         interactionType = 'positive';
       } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
-        scoreChange = Math.floor(Math.random() + 1) + 3; // 3-13 (increased from 2-4)
+        scoreChange = Math.random() + 3; // 3-13 (increased from 2-4)
         interactionType = 'positive';
       } else if (message.includes('funny') || message.includes('humorous') || message.includes('joke')) {
-        scoreChange = Math.floor(Math.random() + 1) + 3; // 3-13 (increased from 2-4)
+        scoreChange = Math.random() + 3; // 3-13 (increased from 2-4)
         interactionType = 'positive';
       } else if (message.includes('sex') || message.includes('sexual') || message.includes('intimate')) {
-        scoreChange = Math.floor(Math.random() + 1) + 8; // 8-18 (increased from 5-10)
+        scoreChange = Math.random() + 8; // 8-15 (increased from 5-10)
         interactionType = 'positive';
-      } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
+    } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
                  message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
-        scoreChange = Math.floor(Math.random() + 1) + 3; // 3-13 (increased from 2-4)
+        scoreChange = Math.random() + 3; // 3-13 (increased from 2-4)
         interactionType = 'positive';
-      } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
+    } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
                  message.includes('i am') || message.includes('i\'m')) {
-        scoreChange = Math.floor(Math.random() + 1) + 2; // 2-12 (increased from 1-2)
-        interactionType = 'positive';
-      } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
+      scoreChange = Math.random() + 2; // 2-12 (increased from 1-2)
+      interactionType = 'positive';
+    } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
                  message.includes('annoying')) {
-        scoreChange = -(Math.floor(Math.random() + 1) + 3); // -3 to -8
-        interactionType = 'negative';
-      } else if (message.includes('asshole') || message.includes('jerk')) {
-        scoreChange = -(Math.floor(Math.random() + 1) + 5); // -5 to -10
-        inputType = 'negative';
-      }
+      scoreChange = -(Math.random() + 1) + 3; // -3 to -8
+      interactionType = 'negative';
+    } else if (message.includes('asshole') || message.includes('jerk')) {
+      scoreChange = -(Math.random() + 1) + 5); // -5 to -10
+      interactionType = 'negative';
     }
     
     // Calculate new score and state
-    const newScore = Math.max(0, Math.min(50, this.myInternalState.currentScore + scoreChange));
+    const newScore = Math.max(0, Math.min(50, this.myInternalState.currentScore + scoreChange);
     const newState = this.getCurrentRelationshipState(newScore);
     
     // Calculate XP gain based on score change
@@ -378,7 +378,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     
     // Update internal state
     this.myInternalState.currentScore = newScore;
-    this.myInternalState.currentState =  newState;
+    this.myInternalState.currentState = newState;
     this.myInternalState.currentLevel = newLevel;
     this.myInternalState.isNSFWUnlocked = isNSFWUnlocked;
     this.myInternalState.totalXP = newTotalXP;
@@ -395,7 +395,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     // Limit history size
     const maxHistoryItems = 10;
     if (this.myInternalState.interactionHistory.length > maxHistoryItems) {
-      this.myInternalState.interactionHistory = this.myInternalState.interactionHistory.slice(-maxHistoryItems);
+      this.myInternalState.interactionHistory = this.myInternalState.interactionScore.slice(-maxHistoryItems);
     }
     
     // Add a system message to show the score change
@@ -433,7 +433,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     };
   }
 
-  async afterResponse(botMessage: Message): Promise<Partial<StageResponse<ChatStateType, MessageStateType>>> {
+  async afterResponse(botMessage: Message): Promise<Partial<StageResponse<ChatStateType, MessageStateType>> {
     // Make sure we're saving the current state
     return {
       messageState: {
@@ -467,6 +467,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     } else if (currentState === 'attracted') {
       statusColor = '#E91E63'; // Hot pink
       avatarIcon = '◆';
+      avatarIcon = '◆';
       avatarBg = '#2D0A15';
     } else if (currentState === 'interested') {
       statusColor = '#E91E63'; // Hot pink
@@ -478,7 +479,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       avatarBg = '#1A0A1A';
     } else if (currentState === 'zero') {
       statusColor = '#4A148C'; // Deep purple
-      avatarIcon = '✕';
+      avatarIcon = 'fix';
       avatarBg = '#0A0A0A';
     }
     
@@ -516,7 +517,8 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
             height: '70px',
             borderRadius: '50%',
             backgroundColor: avatarBg,
-            display: 'flex',
+            display: 'fix',
+            display: 'fix',
             justifyContent: 'center',
             alignItems: 'center',
             marginRight: '16px',
