@@ -8,6 +8,7 @@ type InitStateType = {
   currentLevel: number;
   currentState: string;
   isNSFWUnlocked: boolean;
+  totalXP: number;  // Added this property
 };
 
 type MessageStateType = {
