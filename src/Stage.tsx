@@ -29,15 +29,15 @@ type ConfigType = {
   maxHistoryItems: number;
 };
 
-// Level progression data - updated to match your philosophy
+// Level progression data - fixed to match your philosophy
 const LEVEL_THRESHOLDS = [
   { level: 1, xpRequired: 0 },      // Start at 0 XP
   { level: 2, xpRequired: 50 },     // Level 1-3: First Impressions (50 XP per level)
-  { level: 3, xpRequired: 100 },
-  { level: 4, xpRequired: 175 },    // Level 4-5: Building Connection (75 XP per level)
-  { level: 5, xpRequired: 250 },    // NSFW unlocks here
-  { level: 6, xpRequired: 350 },    // Level 6-10: Deepening Friendship (100 XP per level)
-  { level: 7, xpRequired: 450 },
+  { level: 3, xpRequired: 100 },    // Level 2: 50 XP
+  { level: 4, xpRequired: 150 },    // Level 3: 50 XP
+  { level: 5, xpRequired: 225 },    // Level 4-5: Building Connection (75 XP per level)
+  { level: 6, xpRequired: 350 },    // Level 5: 125 XP
+  { level: 7, xpRequired: 450 },    // Level 6-10: Deepening Friendship (100 XP per level)
   { level: 8, xpRequired: 550 },
   { level: 9, xpRequired: 650 },
   { level: 10, xpRequired: 750 },
@@ -171,52 +171,52 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     let xpChange = 0;
     let interactionType: 'positive' | 'negative' | 'neutral' = 'neutral';
     
-    // Positive interactions
+    // Positive interactions - increased XP gains
     if (message.includes('hi') || message.includes('hello') || message.includes('how are you')) {
-      xpChange = Math.floor(Math.random() * 3) + 1; // 1-3
+      xpChange = Math.floor(Math.random() * 5) + 3; // 3-7 (increased from 1-3)
       interactionType = 'positive';
     } 
     // Check for interest in Ani
     else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
-      xpChange = Math.floor(Math.random() * 4) + 3; // 3-6
+      xpChange = Math.floor(Math.random() * 7) + 5; // 5-11 (increased from 3-6)
       interactionType = 'positive';
     }
     // Check for sharing personal information
     else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
              message.includes('i am') || message.includes('i\'m')) {
-      xpChange = Math.floor(Math.random() * 4) + 5; // 5-8
+      xpChange = Math.floor(Math.random() * 8) + 7; // 7-14 (increased from 5-8)
       interactionType = 'positive';
     }
     // Check for friendly and creative tone
     else if (message.includes('cute') || message.includes('creative') || message.includes('interesting')) {
-      xpChange = Math.floor(Math.random() * 5) + 8; // 8-12
+      xpChange = Math.floor(Math.random() * 10) + 10; // 10-19 (increased from 8-12)
       interactionType = 'positive';
     }
     // Check for sweet compliments
     else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
              message.includes('perfect') || message.includes('amazing') || message.includes('wonderful') ||
              message.includes('special') || message.includes('flowers')) {
-      xpChange = Math.floor(Math.random() * 6) + 10; // 10-15
+      xpChange = Math.floor(Math.random() * 11) + 15; // 15-25 (increased from 10-15)
       interactionType = 'positive';
     }
     // Check for romantic/intimate content (after NSFW unlock)
     else if (this.myInternalState.isNSFWUnlocked && (
              message.includes('kiss') || message.includes('hug') || message.includes('touch') ||
              message.includes('desire') || message.includes('want you') || message.includes('intimate'))) {
-      xpChange = Math.floor(Math.random() * 4) + 12; // 12-15
+      xpChange = Math.floor(Math.random() * 14) + 17; // 17-30 (increased from 12-15)
       interactionType = 'positive';
     }
     // Negative interactions
     else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
              message.includes('annoying')) {
-      xpChange = -(Math.floor(Math.random() * 6) + 3); // -3 to -8
+      xpChange = -(Math.floor(Math.random() * 8) + 5); // -5 to -12 (increased from -3 to -8)
       interactionType = 'negative';
     }
     // Check for explicit content (before NSFW unlock)
     else if (!this.myInternalState.isNSFWUnlocked && (
              message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
              message.includes('fuck') || message.includes('sexual') || message.includes('sexy time'))) {
-      xpChange = -(Math.floor(Math.random() * 6) + 5); // -5 to -10
+      xpChange = -(Math.floor(Math.random() * 11) + 8); // -8 to -18 (increased from -5 to -10)
       interactionType = 'negative';
     }
     
