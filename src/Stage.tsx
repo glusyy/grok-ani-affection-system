@@ -430,6 +430,13 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       chatState: {
         interactionHistory: this.myInternalState.interactionHistory
       },
+      initState: {
+        currentLevel: this.myInternalState.currentLevel,
+        currentState: this.myInternalState.currentState,
+        isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
+        totalXP: this.myInternalState.totalXP,
+        currentScore: this.myInternalState.currentScore
+      },
       systemMessage: systemMessage
     };
   }
@@ -445,6 +452,13 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       },
       chatState: {
         interactionHistory: this.myInternalState.interactionHistory
+      },
+      initState: {
+        currentLevel: this.myInternalState.currentLevel,
+        currentState: this.myInternalState.currentState,
+        isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
+        totalXP: this.myInternalState.totalXP,
+        currentScore: this.myInternalState.currentScore
       }
     };
   }
