@@ -363,8 +363,8 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     // Calculate XP gain based on score change
     let xpGain = 0;
     if (scoreChange > 0) {
-      // Convert score change to XP (higher scores give more XP)
-      xpGain = scoreChange * 4; // Increased from 3 to 4 for faster leveling
+      // Convert score change to XP (1:1 ratio)
+      xpGain = scoreChange;
     }
     
     // Calculate new total XP and level
