@@ -230,21 +230,21 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     if (previousState === 'zero') {
       // Zero state scoring - increased XP gains
       if (message.includes('hi') || message.includes('hello') || message.includes('how are you')) {
-        scoreChange = 2; // Basic greetings (increased from 1)
+        scoreChange = 2; // Basic greetings (will be 4 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('creative') || message.includes('curious')) {
-        scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10 (increased from 3-6)
+        scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10 (will be 10-20 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
-        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5 (increased from 1-3)
+        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5 (will be 4-10 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
                  message.includes('i am') || message.includes('i\'m')) {
-        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5 (increased from 1-3)
+        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5 (will be 4-10 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
                  message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
-        scoreChange = Math.floor(Math.random() * 8) + 8; // 8-15 (increased from 5-10)
+        scoreChange = Math.floor(Math.random() * 8) + 8; // 8-15 (will be 16-30 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
                  message.includes('annoying')) {
@@ -258,21 +258,21 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     } else if (previousState === 'neutral') {
       // Neutral state scoring (from firstLevelPrompt) - increased XP gains
       if (message.includes('hi') || message.includes('hello') || message.includes('how are you')) {
-        scoreChange = 2; // Basic greetings (increased from 1)
+        scoreChange = 2; // Basic greetings (will be 4 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('creative') || message.includes('curious')) {
-        scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10 (increased from 3-6)
+        scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10 (will be 10-20 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
-        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5 (increased from 1-3)
+        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5 (will be 4-10 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
                  message.includes('i am') || message.includes('i\'m')) {
-        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5 (increased from 1-3)
+        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5 (will be 4-10 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
                  message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
-        scoreChange = Math.floor(Math.random() * 8) + 8; // 8-15 (increased from 5-10)
+        scoreChange = Math.floor(Math.random() * 8) + 8; // 8-15 (will be 16-30 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
                  message.includes('annoying')) {
@@ -286,21 +286,21 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     } else if (previousState === 'interested') {
       // Interested state scoring (from secondLevelPrompt) - increased XP gains
       if (message.includes('creative') || message.includes('curious')) {
-        scoreChange = Math.floor(Math.random() * 6) + 6; // 6-11 (increased from 4-7)
+        scoreChange = Math.floor(Math.random() * 6) + 6; // 6-11 (will be 12-22 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
-        scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6 (increased from 2-4)
+        scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6 (will be 6-12 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('funny') || message.includes('humorous') || message.includes('joke')) {
-        scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6 (increased from 2-4)
+        scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6 (will be 6-12 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('love') || message.includes('beautiful') || message.includes('playful') || 
                  message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
-        scoreChange = Math.floor(Math.random() * 8) + 8; // 8-15 (increased from 5-10)
+        scoreChange = Math.floor(Math.random() * 8) + 8; // 8-15 (will be 16-30 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
                  message.includes('i am') || message.includes('i\'m')) {
-        scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6 (increased from 2-4)
+        scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6 (will be 6-12 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
                  message.includes('annoying')) {
@@ -314,21 +314,21 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     } else if (previousState === 'attracted') {
       // Attracted state scoring - increased XP gains
       if (message.includes('creative') || message.includes('curious')) {
-        scoreChange = Math.floor(Math.random() * 6) + 8; // 8-13 (increased from 5-8)
+        scoreChange = Math.floor(Math.random() * 6) + 8; // 8-13 (will be 16-26 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
-        scoreChange = Math.floor(Math.random() * 10) + 4; // 4-13 (increased from 3-5)
+        scoreChange = Math.floor(Math.random() * 10) + 4; // 4-13 (will be 8-26 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('funny') || message.includes('humorous') || message.includes('joke')) {
-        scoreChange = Math.floor(Math.random() * 10) + 4; // 4-13 (increased from 3-5)
+        scoreChange = Math.floor(Math.random() * 10) + 4; // 4-13 (will be 8-26 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
                  message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
-        scoreChange = Math.floor(Math.random() * 11) + 12; // 12-22 (increased from 8-13)
+        scoreChange = Math.floor(Math.random() * 11) + 12; // 12-22 (will be 24-44 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
                  message.includes('i am') || message.includes('i\'m')) {
-        scoreChange = Math.floor(Math.random() * 10) + 4; // 4-13 (increased from 3-5)
+        scoreChange = Math.floor(Math.random() * 10) + 4; // 4-13 (will be 8-26 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
                  message.includes('annoying')) {
@@ -342,24 +342,24 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     } else if (previousState === 'intimate') {
       // Intimate state scoring (from thirdLevelPrompt) - increased XP gains
       if (message.includes('creative') || message.includes('curious')) {
-        scoreChange = Math.floor(Math.random() * 10) + 4; // 4-13 (increased from 3-4)
+        scoreChange = Math.floor(Math.random() * 10) + 4; // 4-13 (will be 8-26 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
-        scoreChange = Math.floor(Math.random() * 10) + 3; // 3-12 (increased from 2-4)
+        scoreChange = Math.floor(Math.random() * 10) + 3; // 3-12 (will be 6-24 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('funny') || message.includes('humorous') || message.includes('joke')) {
-        scoreChange = Math.floor(Math.random() * 10) + 3; // 3-12 (increased from 2-4)
+        scoreChange = Math.floor(Math.random() * 10) + 3; // 3-12 (will be 6-24 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('sex') || message.includes('sexual') || message.includes('intimate')) {
-        scoreChange = Math.floor(Math.random() * 7) + 8; // 8-14 (increased from 5-10)
+        scoreChange = Math.floor(Math.random() * 7) + 8; // 8-14 (will be 16-28 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
                  message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
-        scoreChange = Math.floor(Math.random() * 10) + 3; // 3-12 (increased from 2-4)
+        scoreChange = Math.floor(Math.random() * 10) + 3; // 3-12 (will be 6-24 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
                  message.includes('i am') || message.includes('i\'m')) {
-        scoreChange = Math.floor(Math.random() * 10) + 2; // 2-11 (increased from 1-2)
+        scoreChange = Math.floor(Math.random() * 10) + 2; // 2-11 (will be 4-22 XP with 2x multiplier)
         interactionType = 'positive';
       } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
                  message.includes('annoying')) {
@@ -374,11 +374,11 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     // Calculate new score
     const newScore = Math.max(0, Math.min(50, this.myInternalState.currentScore + scoreChange));
     
-    // Calculate XP gain based on score change
+    // Calculate XP gain based on score change with 2x multiplier for positive interactions
     let xpGain = 0;
     if (scoreChange > 0) {
-      // Convert score change to XP (1:1 ratio)
-      xpGain = scoreChange;
+      // Apply 2x multiplier for positive score changes
+      xpGain = scoreChange * 2;
     }
     
     // Calculate new total XP and level
