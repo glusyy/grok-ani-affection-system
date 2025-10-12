@@ -37,15 +37,6 @@ type ConfigType = {
   maxHistoryItems: number;
 };
 
-// Relationship states matching the original xAI system (updated to 0-50 range)
-const RELATIONSHIP_STATES = [
-  { name: 'zero', minScore: 0, maxScore: 5 },
-  { name: 'neutral', minScore: 6, maxScore: 20 },
-  { name: 'interested', minScore: 21, maxScore: 35 },
-  { name: 'attracted', minScore: 36, maxScore: 45 },
-  { name: 'intimate', minScore: 46, maxScore: 50 }
-];
-
 // Level progression data - fixed 50 XP per level
 const LEVEL_THRESHOLDS = [
   { level: 1, xpRequired: 0 },
@@ -111,7 +102,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     
     // Initialize with default values if not provided
     const currentLevel = initState?.currentLevel || messageState?.currentLevel || 1;
-    const currentState = initState?.currentState || messageState?.currentState || 'zero';
+    const currentState = initState?.currentState || messageState?.currentState || this.getStateForLevel(1);
     const isNSFWUnlocked = initState?.isNSFWUnlocked || messageState?.isNSFWUnlocked || false;
     const totalXP = initState?.totalXP || messageState?.totalXP || 0;
     const currentScore = initState?.currentScore || messageState?.currentScore || 0; // Start at 0 (Zero state)
@@ -126,6 +117,15 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     };
   }
 
+  // Get relationship state based on level
+  getStateForLevel(level: number): string {
+    if (level === 1) return 'zero';
+    if (level === 2) return 'neutral';
+    if (level === 3) return 'interested';
+    if (level === 4) return 'attracted';
+    return 'intimate'; // Level 5 and above
+  }
+
   // Calculate level based on total XP
   calculateLevel(totalXP: number): number {
     for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
@@ -134,16 +134,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       }
     }
     return 1;
-  }
-
-  // Get current relationship state based on score
-  getCurrentRelationshipState(score: number): string {
-    for (const state of RELATIONSHIP_STATES) {
-      if (score >= state.minScore && score <= state.maxScore) {
-        return state.name;
-      }
-    }
-    return 'zero';
   }
 
   // Get XP needed for next level
@@ -172,7 +162,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     // If we have saved state, restore it
     if (this.initialData.initState) {
       this.myInternalState.currentLevel = this.initialData.initState.currentLevel || 1;
-      this.myInternalState.currentState = this.initialData.initState.currentState || 'zero';
+      this.myInternalState.currentState = this.initialData.initState.currentState || this.getStateForLevel(1);
       this.myInternalState.isNSFWUnlocked = this.initialData.initState.isNSFWUnlocked || false;
       this.myInternalState.totalXP = this.initialData.initState.totalXP || 0;
       this.myInternalState.currentScore = this.initialData.initState.currentScore || 0;
@@ -186,6 +176,9 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       this.myInternalState.totalXP = this.initialData.messageState.totalXP || this.myInternalState.totalXP;
       this.myInternalState.currentScore = this.initialData.messageState.currentScore || this.myInternalState.currentScore;
     }
+    
+    // Ensure state matches level
+    this.myInternalState.currentState = this.getStateForLevel(this.myInternalState.currentLevel);
     
     if (this.initialData.chatState && this.initialData.chatState.interactionHistory) {
       this.myInternalState.interactionHistory = this.initialData.chatState.interactionHistory;
@@ -215,6 +208,9 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       this.myInternalState.isNSFWUnlocked = state.isNSFWUnlocked || false;
       this.myInternalState.totalXP = state.totalXP || 0;
       this.myInternalState.currentScore = state.currentScore || 0;
+      
+      // Ensure state matches level
+      this.myInternalState.currentState = this.getStateForLevel(this.myInternalState.currentLevel);
     }
   }
 
@@ -375,9 +371,8 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       }
     }
     
-    // Calculate new score and state
+    // Calculate new score
     const newScore = Math.max(0, Math.min(50, this.myInternalState.currentScore + scoreChange));
-    const newState = this.getCurrentRelationshipState(newScore);
     
     // Calculate XP gain based on score change
     let xpGain = 0;
@@ -389,6 +384,9 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     // Calculate new total XP and level
     const newTotalXP = Math.max(0, this.myInternalState.totalXP + xpGain);
     const newLevel = this.calculateLevel(newTotalXP);
+    
+    // Get state based on new level
+    const newState = this.getStateForLevel(newLevel);
     
     // Check if NSFW should be unlocked (at level 5)
     let isNSFWUnlocked = this.myInternalState.isNSFWUnlocked;
