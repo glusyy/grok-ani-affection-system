@@ -5,12 +5,14 @@ import {LoadResponse} from "@chub-ai/stages-ts/dist/types/load";
 // Define our state types
 type InitStateType = {
   currentScore: number;
+  currentLevel: number;
   currentState: string;
   isNSFWUnlocked: boolean;
 };
 
 type MessageStateType = {
   previousScore: number;
+  previousLevel: number;
   previousState: string;
   lastChange: number;
   lastInteractionType: 'positive' | 'negative' | 'neutral';
@@ -31,11 +33,38 @@ type ConfigType = {
 
 // Relationship states matching the original xAI system
 const RELATIONSHIP_STATES = [
-  { name: 'zero', minScore: 0, maxScore: 5, description: 'First Meeting' },
-  { name: 'neutral', minScore: 6, maxScore: 35, description: 'Getting to Know' },
-  { name: 'interested', minScore: 36, maxScore: 60, description: 'Building Connection' },
-  { name: 'attracted', minScore: 61, maxScore: 75, description: 'Growing Attraction' },
-  { name: 'intimate', minScore: 76, maxScore: 100, description: 'Deep Intimacy' }
+  { name: 'zero', minScore: 0, maxScore: 5 },
+  { name: 'neutral', minScore: 6, maxScore: 35 },
+  { name: 'interested', minScore: 36, maxScore: 60 },
+  { name: 'attracted', minScore: 61, maxScore: 75 },
+  { name: 'intimate', minScore: 76, maxScore: 100 }
+];
+
+// Level progression data
+const LEVEL_THRESHOLDS = [
+  { level: 1, xpRequired: 0 },      // Start at 0 XP
+  { level: 2, xpRequired: 50 },     // Level 1-3: First Impressions (50 XP per level)
+  { level: 3, xpRequired: 100 },    // Level 2: 50 XP
+  { level: 4, xpRequired: 150 },    // Level 3: 50 XP
+  { level: 5, xpRequired: 200 },    // Level 4-5: Building Connection (75 XP per level)
+  { level: 6, xpRequired: 275 },    // Level 5: 75 XP
+  { level: 7, xpRequired: 375 },    // Level 6-10: Deepening Friendship (100 XP per level)
+  { level: 8, xpRequired: 475 },
+  { level: 9, xpRequired: 575 },
+  { level: 10, xpRequired: 675 },
+  { level: 11, xpRequired: 775 },   // Level 11-15: Emotional Intimacy (150 XP per level)
+  { level: 12, xpRequired: 925 },
+  { level: 13, xpRequired: 1075 },
+  { level: 14, xpRequired: 1225 },
+  { level: 15, xpRequired: 1375 },
+  { level: 16, xpRequired: 1525 },  // Level 16-20: Romantic Bond (200 XP per level)
+  { level: 17, xpRequired: 1725 },
+  { level: 18, xpRequired: 1925 },
+  { level: 19, xpRequired: 2125 },
+  { level: 20, xpRequired: 2325 },
+  { level: 21, xpRequired: 2525 },  // Level 21-23+: Complete Acceptance (250+ XP per level)
+  { level: 22, xpRequired: 2775 },
+  { level: 23, xpRequired: 3025 },
 ];
 
 // The main stage component
@@ -47,8 +76,10 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   // Internal state for the component
   myInternalState: {
     currentScore: number;
+    currentLevel: number;
     currentState: string;
     isNSFWUnlocked: boolean;
+    totalXP: number;
     interactionHistory: Array<{
       message: string;
       scoreChange: number;
@@ -73,16 +104,30 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     } = data;
     
     // Initialize with default values if not provided
-    const currentScore = initState?.currentScore || 6; // Start in neutral state
-    const currentState = initState?.currentState || 'neutral';
+    const currentScore = initState?.currentScore || 0; // Start at 0 (Zero state)
+    const currentLevel = initState?.currentLevel || 1;
+    const currentState = initState?.currentState || 'zero';
     const isNSFWUnlocked = initState?.isNSFWUnlocked || false;
+    const totalXP = initState?.totalXP || 0;
     
     this.myInternalState = {
       currentScore: currentScore,
+      currentLevel: currentLevel,
       currentState: currentState,
       isNSFWUnlocked: isNSFWUnlocked,
+      totalXP: totalXP,
       interactionHistory: chatState?.interactionHistory || []
     };
+  }
+
+  // Calculate level based on total XP
+  calculateLevel(totalXP: number): number {
+    for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
+      if (totalXP >= LEVEL_THRESHOLDS[i].xpRequired) {
+        return LEVEL_THRESHOLDS[i].level;
+      }
+    }
+    return 1;
   }
 
   // Get current relationship state based on score
@@ -92,21 +137,39 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         return state.name;
       }
     }
-    return 'neutral';
+    return 'zero';
   }
 
-  // Get state description
-  getStateDescription(stateName: string): string {
-    const state = RELATIONSHIP_STATES.find(s => s.name === stateName);
-    return state ? state.description : 'Unknown';
+  // Get XP needed for next level
+  getXPForNextLevel(currentLevel: number): number {
+    const nextLevel = currentLevel + 1;
+    if (nextLevel >= LEVEL_THRESHOLDS.length) {
+      return LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1].xpRequired;
+    }
+    return LEVEL_THRESHOLDS[nextLevel].xpRequired;
+  }
+
+  // Get XP needed for current level
+  getXPForCurrentLevel(currentLevel: number): number {
+    const levelData = LEVEL_THRESHOLDS.find(l => l.level === currentLevel);
+    return levelData ? levelData.xpRequired : 0;
+  }
+
+  // Get XP needed within the current level
+  getXPNeededInCurrentLevel(currentLevel: number): number {
+    const currentLevelXP = this.getXPForCurrentLevel(currentLevel);
+    const nextLevelXP = this.getXPForNextLevel(currentLevel);
+    return nextLevelXP - currentLevelXP;
   }
 
   async load(): Promise<Partial<LoadResponse<InitStateType, ChatStateType, MessageStateType>>> {
     // If we have saved state, restore it
     if (this.initialData.initState) {
-      this.myInternalState.currentScore = this.initialData.initState.currentScore || 6;
-      this.myInternalState.currentState = this.initialData.initState.currentState || 'neutral';
+      this.myInternalState.currentScore = this.initialData.initState.currentScore || 0;
+      this.myInternalState.currentLevel = this.initialData.initState.currentLevel || 1;
+      this.myInternalState.currentState = this.initialData.initState.currentState || 'zero';
       this.myInternalState.isNSFWUnlocked = this.initialData.initState.isNSFWUnlocked || false;
+      this.myInternalState.totalXP = this.initialData.initState.totalXP || 0;
     }
     
     if (this.initialData.chatState && this.initialData.chatState.interactionHistory) {
@@ -118,8 +181,10 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       error: null,
       initState: {
         currentScore: this.myInternalState.currentScore,
+        currentLevel: this.myInternalState.currentLevel,
         currentState: this.myInternalState.currentState,
-        isNSFWUnlocked: this.myInternalState.isNSFWUnlocked
+        isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
+        totalXP: this.myInternalState.totalXP
       },
       chatState: {
         interactionHistory: this.myInternalState.interactionHistory
@@ -130,6 +195,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   async setState(state: MessageStateType): Promise<void> {
     if (state != null) {
       this.myInternalState.currentScore = state.previousScore;
+      this.myInternalState.currentLevel = state.previousLevel;
       this.myInternalState.currentState = state.previousState;
     }
   }
@@ -137,7 +203,9 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   async beforePrompt(userMessage: Message): Promise<Partial<StageResponse<ChatStateType, MessageStateType>>> {
     const { content } = userMessage;
     const previousScore = this.myInternalState.currentScore;
+    const previousLevel = this.myInternalState.currentLevel;
     const previousState = this.myInternalState.currentState;
+    const previousXP = this.myInternalState.totalXP;
     
     // Analyze the user message to determine score change
     const message = content.toLowerCase();
@@ -293,16 +361,29 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     const newScore = Math.max(0, Math.min(100, this.myInternalState.currentScore + scoreChange));
     const newState = this.getCurrentRelationshipState(newScore);
     
-    // Check if NSFW should be unlocked (at attracted state)
+    // Calculate XP gain based on score change
+    let xpGain = 0;
+    if (scoreChange > 0) {
+      // Convert score change to XP (higher scores give more XP)
+      xpGain = scoreChange * 2; // Simple conversion, can be adjusted
+    }
+    
+    // Calculate new total XP and level
+    const newTotalXP = Math.max(0, this.myInternalState.totalXP + xpGain);
+    const newLevel = this.calculateLevel(newTotalXP);
+    
+    // Check if NSFW should be unlocked (at level 5)
     let isNSFWUnlocked = this.myInternalState.isNSFWUnlocked;
-    if (newState === 'attracted' && !isNSFWUnlocked) {
+    if (newLevel >= 5 && !isNSFWUnlocked) {
       isNSFWUnlocked = true;
     }
     
     // Update internal state
     this.myInternalState.currentScore = newScore;
     this.myInternalState.currentState = newState;
+    this.myInternalState.currentLevel = newLevel;
     this.myInternalState.isNSFWUnlocked = isNSFWUnlocked;
+    this.myInternalState.totalXP = newTotalXP;
     
     // Update the interaction history
     const newHistoryItem = {
@@ -323,14 +404,19 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     let systemMessage = null;
     if (scoreChange !== 0) {
       const direction = scoreChange > 0 ? 'increased' : 'decreased';
-      systemMessage = `Ani's affection ${direction} by ${Math.abs(scoreChange)}. Current state: ${this.getStateDescription(newState)}`;
+      systemMessage = `Ani's affection ${direction} by ${Math.abs(scoreChange)}. Current state: ${newState}`;
     }
     
     // State change message
     if (newState !== previousState) {
-      systemMessage = systemMessage ? `${systemMessage} RELATIONSHIP STATE CHANGED! Ani is now ${this.getStateDescription(newState)}!` : `RELATIONSHIP STATE CHANGED! Ani is now ${this.getStateDescription(newState)}!`;
+      systemMessage = systemMessage ? `${systemMessage} RELATIONSHIP STATE CHANGED! Ani is now ${newState}!` : `RELATIONSHIP STATE CHANGED! Ani is now ${newState}!`;
+    }
+    
+    // Level up message
+    if (newLevel > previousLevel) {
+      systemMessage = systemMessage ? `${systemMessage} LEVEL UP! You're now at level ${newLevel}!` : `LEVEL UP! You're now at level ${newLevel}!`;
       
-      if (newState === 'attracted' && !this.myInternalState.isNSFWUnlocked) {
+      if (newLevel === 5 && !this.myInternalState.isNSFWUnlocked) {
         systemMessage += " NSFW content is now unlocked!";
       }
     }
@@ -338,6 +424,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     return {
       messageState: {
         previousScore: previousScore,
+        previousLevel: previousLevel,
         previousState: previousState,
         lastChange: scoreChange,
         lastInteractionType: interactionType
@@ -354,6 +441,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     return {
       messageState: {
         previousScore: this.myInternalState.currentScore,
+        previousLevel: this.myInternalState.currentLevel,
         previousState: this.myInternalState.currentState,
         lastChange: 0,
         lastInteractionType: 'neutral'
@@ -366,12 +454,14 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
 
   render(): ReactElement {
     const currentScore = this.myInternalState.currentScore;
+    const currentLevel = this.myInternalState.currentLevel;
     const currentState = this.myInternalState.currentState;
+    const totalXP = this.myInternalState.totalXP;
     const isNSFWUnlocked = this.myInternalState.isNSFWUnlocked;
     
     // Determine the status color and message based on state
     let statusColor = '#9C27B0'; // Default purple
-    let statusMessage = this.getStateDescription(currentState);
+    let statusMessage = currentState.charAt(0).toUpperCase() + currentState.slice(1);
     let avatarIcon = '○'; // Default neutral icon
     let avatarBg = '#1A1A1A'; // Default dark background
     
@@ -397,13 +487,11 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       avatarBg = '#0A0A0A';
     }
     
-    // Calculate progress percentage within current state
-    const currentStateData = RELATIONSHIP_STATES.find(s => s.name === currentState);
-    const stateMinScore = currentStateData ? currentStateData.minScore : 0;
-    const stateMaxScore = currentStateData ? currentStateData.maxScore : 100;
-    const stateRange = stateMaxScore - stateMinScore;
-    const currentProgress = currentScore - stateMinScore;
-    const percentage = stateRange > 0 ? (currentProgress / stateRange) * 100 : 100;
+    // Calculate XP progress for current level
+    const currentLevelXP = this.getXPForCurrentLevel(currentLevel);
+    const xpNeededInCurrentLevel = this.getXPNeededInCurrentLevel(currentLevel);
+    const xpForCurrentLevel = totalXP - currentLevelXP;
+    const percentage = xpNeededInCurrentLevel > 0 ? (xpForCurrentLevel / xpNeededInCurrentLevel) * 100 : 100;
     
     return (
       <div style={{
@@ -417,7 +505,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         overflow: 'auto',
         color: '#E0E0E0'
       }}>
-        {/* Header with avatar and state */}
+        {/* Header with avatar and level */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -463,7 +551,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
                 color: statusColor,
                 marginRight: '8px',
                 textShadow: `0 0 10px ${statusColor}80`
-              }}>{currentScore}</span>
+              }}>Level {currentLevel}</span>
               <span style={{
                 fontSize: '16px',
                 fontWeight: '500',
@@ -474,7 +562,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
           </div>
         </div>
         
-        {/* Progress bar */}
+        {/* Score and XP Progress bars */}
         <div style={{
           marginBottom: '20px',
           backgroundColor: 'rgba(26, 10, 26, 0.7)',
@@ -483,16 +571,44 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
           border: '1px solid #333'
         }}>
+          {/* Score Progress */}
           <div style={{
             fontSize: '14px',
             color: '#BBB',
             marginBottom: '8px'
           }}>
-            Score: {currentProgress} / {stateRange}
+            Score: {currentScore} / 100
           </div>
           <div style={{
             position: 'relative',
-            height: '24px',
+            height: '20px',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            borderRadius: '0px',
+            overflow: 'hidden',
+            marginBottom: '16px',
+            border: '1px solid #333'
+          }}>
+            <div style={{
+              height: '100%',
+              width: `${currentScore}%`,
+              background: `linear-gradient(90deg, #4A148C 0%, #6A1B9A 20%, #9C27B0 40%, #E91E63 60%, #F50057 80%, #FF4081 100%)`,
+              transition: 'width 0.8s ease',
+              borderRadius: '0px',
+              boxShadow: `0 0 10px ${statusColor}60`
+            }} />
+          </div>
+          
+          {/* XP Progress */}
+          <div style={{
+            fontSize: '14px',
+            color: '#BBB',
+            marginBottom: '8px'
+          }}>
+            XP: {xpForCurrentLevel} / {xpNeededInCurrentLevel}
+          </div>
+          <div style={{
+            position: 'relative',
+            height: '20px',
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
             borderRadius: '0px',
             overflow: 'hidden',
@@ -503,9 +619,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
               height: '100%',
               width: `${percentage}%`,
               background: `linear-gradient(90deg, #4A148C 0%, #6A1B9A 20%, #9C27B0 40%, #E91E63 60%, #F50057 80%, #FF4081 100%)`,
-              backgroundSize: '200% 100%',
-              backgroundPosition: `${Math.max(0, Math.min(100, percentage))}% 0`,
-              transition: 'width 0.8s ease, background-position 0.8s ease',
+              transition: 'width 0.8s ease',
               borderRadius: '0px',
               boxShadow: `0 0 10px ${statusColor}60`
             }} />
@@ -516,11 +630,9 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
             fontSize: '14px',
             color: '#BBB'
           }}>
-            <span>Zero</span>
-            <span>Neutral</span>
-            <span>Interested</span>
-            <span style={{ color: isNSFWUnlocked ? '#E91E63' : '#BBB' }}>Attracted (NSFW)</span>
-            <span>Intimate</span>
+            <span>Level {currentLevel}</span>
+            <span style={{ color: isNSFWUnlocked ? '#E91E63' : '#BBB' }}>Level 5 (NSFW)</span>
+            <span>Level {Math.min(currentLevel + 1, 23)}</span>
           </div>
         </div>
       </div>
