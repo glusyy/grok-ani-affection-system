@@ -143,10 +143,10 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   // Get XP needed for next level
   getXPForNextLevel(currentLevel: number): number {
     const nextLevel = currentLevel + 1;
-    if (nextLevel >= LEVEL_THRESHOLDS.length) {
+    if (nextLevel > LEVEL_THRESHOLDS.length) {
       return LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1].xpRequired;
     }
-    return LEVEL_THRESHOLDS[nextLevel].xpRequired;
+    return LEVEL_THRESHOLDS[nextLevel - 1].xpRequired;
   }
 
   // Get XP needed for current level
@@ -572,7 +572,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
             color: '#BBB',
             marginBottom: '8px'
           }}>
-            XP: {xpForCurrentLevel} / {xpNeededInCurrentLevel} (50 XP per level)
+            XP: {xpForCurrentLevel} / {xpNeededInCurrentLevel}
           </div>
           <div style={{
             position: 'relative',
