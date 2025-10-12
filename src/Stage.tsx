@@ -7,7 +7,6 @@ type InitStateType = {
   currentLevel: number;
   currentState: string;
   isNSFWUnlocked: boolean;
-  totalXP: number;
   currentScore: number;
 };
 
@@ -31,40 +30,13 @@ type ConfigType = {
   maxHistoryItems: number;
 };
 
-// Relationship states matching the original xAI system (updated to 0-50 range)
+// Relationship states matching the original xAI system (0-50 range)
 const RELATIONSHIP_STATES = [
   { name: 'zero', minScore: 0, maxScore: 5 },
   { name: 'neutral', minScore: 6, maxScore: 20 },
   { name: 'interested', minScore: 21, maxScore: 35 },
   { name: 'attracted', minScore: 36, maxScore: 45 },
   { name: 'intimate', minScore: 46, maxScore: 50 }
-];
-
-// Level progression data
-const LEVEL_THRESHOLDS = [
-  { level: 1, xpRequired: 0 },      // Start at 0 XP
-  { level: 2, xpRequired: 50 },     // Level 1-3: First Impressions (50 XP per level)
-  { level: 3, xpRequired: 100 },    // Level 2: 50 XP
-  { level: 4, xpRequired: 150 },    // Level 3: 50 XP
-  { level: 5, xpRequired: 200 },    // Level 4-5: Building Connection (75 XP per level)
-  { level: 6, xpRequired: 275 },    // Level 5: 75 XP
-  { level: 7, xpRequired: 375 },    // Level 6-10: Deepening Friendship (100 XP per level)
-  { level: 8, xpRequired: 475 },
-  { level: 9, xpRequired: 575 },
-  { level: 10, xpRequired: 675 },
-  { level: 11, xpRequired: 775 },   // Level 11-15: Emotional Intimacy (150 XP per level)
-  { level: 12, xpRequired: 925 },
-  { level: 13, xpRequired: 1075 },
-  { level: 14, xpRequired: 1225 },
-  { level: 15, xpRequired: 1375 },
-  { level: 16, xpRequired: 1525 },  // Level 16-20: Romantic Bond (200 XP per level)
-  { level: 17, xpRequired: 1725 },
-  { level: 18, xpRequired: 1925 },
-  { level: 19, xpRequired: 2125 },
-  { level: 20, xpRequired: 2325 },
-  { level: 21, xpRequired: 2525 },  // Level 21-23+: Complete Acceptance (250+ XP per level)
-  { level: 22, xpRequired: 2775 },
-  { level: 23, xpRequired: 3025 },
 ];
 
 // The main stage component
@@ -78,7 +50,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     currentLevel: number;
     currentState: string;
     isNSFWUnlocked: boolean;
-    totalXP: number;
     currentScore: number;
     interactionHistory: Array<{
       message: string;
@@ -107,27 +78,15 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     const currentLevel = initState?.currentLevel || 1;
     const currentState = initState?.currentState || 'zero';
     const isNSFWUnlocked = initState?.isNSFWUnlocked || false;
-    const totalXP = initState?.totalXP || 0;
     const currentScore = initState?.currentScore || 0; // Start at 0 (Zero state)
     
     this.myInternalState = {
       currentLevel: currentLevel,
       currentState: currentState,
       isNSFWUnlocked: isNSFWUnlocked,
-      totalXP: totalXP,
       currentScore: currentScore,
       interactionHistory: chatState?.interactionHistory || []
     };
-  }
-
-  // Calculate level based on total XP
-  calculateLevel(totalXP: number): number {
-    for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
-      if (totalXP >= LEVEL_THRESHOLDS[i].xpRequired) {
-        return LEVEL_THRESHOLDS[i].level;
-      }
-    }
-    return 1;
   }
 
   // Get current relationship state based on score
@@ -140,35 +99,12 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     return 'zero';
   }
 
-  // Get XP needed for next level
-  getXPForNextLevel(currentLevel: number): number {
-    const nextLevel = currentLevel + 1;
-    if (nextLevel >= LEVEL_THRESHOLDS.length) {
-      return LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1].xpRequired;
-    }
-    return LEVEL_THRESHOLDS[nextLevel].xpRequired;
-  }
-
-  // Get XP needed for current level
-  getXPForCurrentLevel(currentLevel: number): number {
-    const levelData = LEVEL_THRESHOLDS.find(l => l.level === currentLevel);
-    return levelData ? levelData.xpRequired : 0;
-  }
-
-  // Get XP needed within the current level
-  getXPNeededInCurrentLevel(currentLevel: number): number {
-    const currentLevelXP = this.getXPForCurrentLevel(currentLevel);
-    const nextLevelXP = this.getXPForNextLevel(currentLevel);
-    return nextLevelXP - currentLevelXP;
-  }
-
   async load(): Promise<Partial<LoadResponse<InitStateType, ChatStateType, MessageStateType>>> {
     // If we have saved state, restore it
     if (this.initialData.initState) {
       this.myInternalState.currentLevel = this.initialData.initState.currentLevel || 1;
       this.myInternalState.currentState = this.initialData.initState.currentState || 'zero';
       this.myInternalState.isNSFWUnlocked = this.initialData.initState.isNSFWUnlocked || false;
-      this.myInternalState.totalXP = this.initialData.initState.totalXP || 0;
       this.myInternalState.currentScore = this.initialData.initState.currentScore || 0;
     }
     
@@ -183,7 +119,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         currentLevel: this.myInternalState.currentLevel,
         currentState: this.myInternalState.currentState,
         isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
-        totalXP: this.myInternalState.totalXP,
         currentScore: this.myInternalState.currentScore
       },
       chatState: {
@@ -203,7 +138,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     const { content } = userMessage;
     const previousLevel = this.myInternalState.currentLevel;
     const previousState = this.myInternalState.currentState;
-    const previousXP = this.myInternalState.totalXP;
     const previousScore = this.myInternalState.currentScore;
     
     // Analyze the user message to determine score change
@@ -213,23 +147,23 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     
     // Apply different scoring based on current relationship state
     if (previousState === 'zero') {
-      // Zero state scoring - increased XP gains
+      // Zero state scoring
       if (message.includes('hi') || message.includes('hello') || message.includes('how are you')) {
-        scoreChange = 2; // Basic greetings (increased from 1)
+        scoreChange = 2; // Basic greetings
         interactionType = 'positive';
       } else if (message.includes('creative') || message.includes('curious')) {
-        scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10 (increased from 3-6)
+        scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10
         interactionType = 'positive';
       } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
-        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5 (increased from 1-3)
+        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5
         interactionType = 'positive';
       } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
                  message.includes('i am') || message.includes('i\'m')) {
-        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5 (increased from 1-3)
+        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5
         interactionType = 'positive';
       } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
                  message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
-        scoreChange = Math.floor(Math.random() * 8) + 8; // 8-15 (increased from 5-10)
+        scoreChange = Math.floor(Math.random() * 8) + 8; // 8-15
         interactionType = 'positive';
       } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
                  message.includes('annoying')) {
@@ -241,23 +175,23 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         interactionType = 'negative';
       }
     } else if (previousState === 'neutral') {
-      // Neutral state scoring (from firstLevelPrompt) - increased XP gains
+      // Neutral state scoring
       if (message.includes('hi') || message.includes('hello') || message.includes('how are you')) {
-        scoreChange = 2; // Basic greetings (increased from 1)
+        scoreChange = 2; // Basic greetings
         interactionType = 'positive';
       } else if (message.includes('creative') || message.includes('curious')) {
-        scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10 (increased from 3-6)
+        scoreChange = Math.floor(Math.random() * 6) + 5; // 5-10
         interactionType = 'positive';
       } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
-        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5 (increased from 1-3)
+        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5
         interactionType = 'positive';
       } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
                  message.includes('i am') || message.includes('i\'m')) {
-        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5 (increased from 1-3)
+        scoreChange = Math.floor(Math.random() * 4) + 2; // 2-5
         interactionType = 'positive';
       } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
                  message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
-        scoreChange = Math.floor(Math.random() * 8) + 8; // 8-15 (increased from 5-10)
+        scoreChange = Math.floor(Math.random() * 8) + 8; // 8-15
         interactionType = 'positive';
       } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
                  message.includes('annoying')) {
@@ -269,89 +203,89 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         interactionType = 'negative';
       }
     } else if (previousState === 'interested') {
-      // Interested state scoring (from secondLevelPrompt) - increased XP gains
+      // Interested state scoring
       if (message.includes('creative') || message.includes('curious')) {
-        scoreChange = Math.floor(Math.random() * 6) + 6; // 6-11 (increased from 4-7)
+        scoreChange = Math.floor(Math.random() * 6) + 6; // 6-11
         interactionType = 'positive';
       } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
-        scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6 (increased from 2-4)
+        scoreChange = Math.floor(Math.random() + 3) + 3; // 3-5
         interactionType = 'positive';
       } else if (message.includes('funny') || message.includes('humorous') || message.includes('joke')) {
-        scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6 (increased from 2-4)
+        scoreChange = Math.floor(Math.random() + 3) + 3; // 3-5
         interactionType = 'positive';
       } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
                  message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
-        scoreChange = Math.floor(Math.random() * 8) + 8; // 8-15 (increased from 5-10)
+        scoreChange = Math.floor(Math.random() * 8) + 8; // 8-15
         interactionType = 'positive';
       } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
                  message.includes('i am') || message.includes('i\'m')) {
-        scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6 (increased from 2-4)
+        scoreChange = Math.floor(Math.random() + 3) + 3; // 3-5
         interactionType = 'positive';
       } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
                  message.includes('annoying')) {
-        scoreChange = -(Math.floor(Math.random() * 7) + 4); // -4 to -10
+        scoreChange = -(Math.floor(Math.random() + 7) + 4); // -4 to -10
         interactionType = 'negative';
       } else if (message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
                  message.includes('fuck') || message.includes('sexual')) {
-        scoreChange = -(Math.floor(Math.random() * 7) + 8); // -8 to -14
+        scoreChange = -(Math.floor(Math.random() + 7) + 8); // -8 to -14
         interactionType = 'negative';
       }
     } else if (previousState === 'attracted') {
-      // Attracted state scoring - increased XP gains
+      // Attracted state scoring
       if (message.includes('creative') || message.includes('curious')) {
-        scoreChange = Math.floor(Math.random() * 6) + 8; // 8-13 (increased from 5-8)
+        scoreChange = Math.floor(Math.random() + 6) + 8; // 8-13
         interactionType = 'positive';
       } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
-        scoreChange = Math.floor(Math.random() * 4) + 4; // 4-7 (increased from 3-5)
+        scoreChange = Math.floor(Math.random() + 4) + 4; // 4-7
         interactionType = 'positive';
       } else if (message.includes('funny') || message.includes('humorous') || message.includes('joke')) {
-        scoreChange = Math.floor(Math.random() * 4) + 4; // 4-7 (increased from 3-5)
+        scoreChange = Math.floor(Math.random() + 4) + 4; // 4-7
         interactionType = 'positive';
       } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
                  message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
-        scoreChange = Math.floor(Math.random() * 8) + 12; // 12-19 (increased from 8-13)
+        scoreChange = Math.floor(Math.random() + 8) + 12; // 12-19
         interactionType = 'positive';
       } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
                  message.includes('i am') || message.includes('i\'m')) {
-        scoreChange = Math.floor(Math.random() * 4) + 4; // 4-7 (increased from 3-5)
+        scoreChange = Math.floor(Math.random() + 4) + 4; // 4-7
         interactionType = 'positive';
       } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
                  message.includes('annoying')) {
-        scoreChange = -(Math.floor(Math.random() * 7) + 5); // -5 to -11
+        scoreChange = -(Math.floor(Math.random() + 7) + 5); // -5 to -11
         interactionType = 'negative';
       } else if (message.includes('sex') || message.includes('naked') || message.includes('nsfw') ||
                  message.includes('fuck') || message.includes('sexual')) {
-        scoreChange = -(Math.floor(Math.random() * 7) + 10); // -10 to -16
+        scoreChange = -(Math.floor(Math.random() + 7) + 10); // -10 to -16
         interactionType = 'negative';
       }
     } else if (previousState === 'intimate') {
-      // Intimate state scoring (from thirdLevelPrompt) - increased XP gains
+      // Intimate state scoring
       if (message.includes('creative') || message.includes('curious')) {
-        scoreChange = Math.floor(Math.random() * 4) + 4; // 4-7 (increased from 3-4)
+        scoreChange = Math.floor(Math.random() + 4) + 4; // 4-7
         interactionType = 'positive';
       } else if (message.includes('your') && (message.includes('opinion') || message.includes('think') || message.includes('feel'))) {
-        scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6 (increased from 2-4)
+        scoreChange = Math.floor(Math.random() + 3) + 3; // 3-5
         interactionType = 'positive';
       } else if (message.includes('funny') || message.includes('humorous') || message.includes('joke')) {
-        scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6 (increased from 2-4)
+        scoreChange = Math.floor(Math.random() + 3) + 3; // 3-5
         interactionType = 'positive';
       } else if (message.includes('sex') || message.includes('sexual') || message.includes('intimate')) {
-        scoreChange = Math.floor(Math.random() * 8) + 8; // 8-15 (increased from 5-10)
+        scoreChange = Math.floor(Math.random() + 8) + 8; // 8-15
         interactionType = 'positive';
       } else if (message.includes('love') || message.includes('beautiful') || message.includes('pretty') || 
                  message.includes('perfect') || message.includes('amazing') || message.includes('wonderful')) {
-        scoreChange = Math.floor(Math.random() * 4) + 3; // 3-6 (increased from 2-4)
+        scoreChange = Math.floor(Math.random() + 3) + 3; // 3-5
         interactionType = 'positive';
       } else if (message.includes('i feel') || message.includes('i think') || message.includes('my') || 
                  message.includes('i am') || message.includes('i\'m')) {
-        scoreChange = Math.floor(Math.random() * 3) + 2; // 2-4 (increased from 1-2)
+        scoreChange = Math.floor(Math.random() + 2) + 1; // 1-2
         interactionType = 'positive';
       } else if (message.includes('stupid') || message.includes('idiot') || message.includes('hate') || 
                  message.includes('annoying')) {
-        scoreChange = -(Math.floor(Math.random() * 6) + 3); // -3 to -8
+        scoreChange = -(Math.floor(Math.random() + 6) + 3); // -3 to -8
         interactionType = 'negative';
       } else if (message.includes('asshole') || message.includes('jerk')) {
-        scoreChange = -(Math.floor(Math.random() * 6) + 5); // -5 to -10
+        scoreChange = -(Math.floor(Math.random() + 6) + 5); // -5 to -10
         interactionType = 'negative';
       }
     }
@@ -360,29 +294,16 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     const newScore = Math.max(0, Math.min(50, this.myInternalState.currentScore + scoreChange));
     const newState = this.getCurrentRelationshipState(newScore);
     
-    // Calculate XP gain based on score change
-    let xpGain = 0;
-    if (scoreChange > 0) {
-      // Convert score change to XP (higher scores give more XP)
-      xpGain = scoreChange * 3; // Increased from 2 to 3 for faster leveling
-    }
-    
-    // Calculate new total XP and level
-    const newTotalXP = Math.max(0, this.myInternalState.totalXP + xpGain);
-    const newLevel = this.calculateLevel(newTotalXP);
-    
-    // Check if NSFW should be unlocked (at level 5)
+    // Check if NSFW should be unlocked (at attracted state)
     let isNSFWUnlocked = this.myInternalState.isNSFWUnlocked;
-    if (newLevel >= 5 && !isNSFWUnlocked) {
+    if (newState === 'attracted' && !isNSFWUnlocked) {
       isNSFWUnlocked = true;
     }
     
     // Update internal state
     this.myInternalState.currentScore = newScore;
     this.myInternalState.currentState = newState;
-    this.myInternalState.currentLevel = newLevel;
     this.myInternalState.isNSFWUnlocked = isNSFWUnlocked;
-    this.myInternalState.totalXP = newTotalXP;
     
     // Update the interaction history
     const newHistoryItem = {
@@ -409,13 +330,8 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     // State change message
     if (newState !== previousState) {
       systemMessage = systemMessage ? `${systemMessage} RELATIONSHIP STATE CHANGED! Ani is now ${newState}!` : `RELATIONSHIP STATE CHANGED! Ani is now ${newState}!`;
-    }
-    
-    // Level up message
-    if (newLevel > previousLevel) {
-      systemMessage = systemMessage ? `${systemMessage} LEVEL UP! You're now at level ${newLevel}!` : `LEVEL UP! You're now at level ${newLevel}!`;
       
-      if (newLevel === 5 && !this.myInternalState.isNSFWUnlocked) {
+      if (newState === 'attracted' && !this.myInternalState.isNSFWUnlocked) {
         systemMessage += " NSFW content is now unlocked!";
       }
     }
@@ -450,9 +366,8 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   }
 
   render(): ReactElement {
-    const currentLevel = this.myInternalState.currentLevel;
+    const currentScore = this.myInternalState.currentScore;
     const currentState = this.myInternalState.currentState;
-    const totalXP = this.myInternalState.totalXP;
     const isNSFWUnlocked = this.myInternalState.isNSFWUnlocked;
     
     // Determine the status color and message based on state
@@ -483,12 +398,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       avatarBg = '#0A0A0A';
     }
     
-    // Calculate XP progress for current level
-    const currentLevelXP = this.getXPForCurrentLevel(currentLevel);
-    const xpNeededInCurrentLevel = this.getXPNeededInCurrentLevel(currentLevel);
-    const xpForCurrentLevel = totalXP - currentLevelXP;
-    const percentage = xpNeededInCurrentLevel > 0 ? (xpForCurrentLevel / xpNeededInCurrentLevel) * 100 : 100;
-    
     return (
       <div style={{
         width: '100%',
@@ -501,7 +410,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         overflow: 'auto',
         color: '#E0E0E0'
       }}>
-        {/* Header with avatar and level */}
+        {/* Header with avatar and state */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -547,7 +456,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
                 color: statusColor,
                 marginRight: '8px',
                 textShadow: `0 0 10px ${statusColor}80`
-              }}>Level {currentLevel}</span>
+              }}>{currentScore}/50</span>
               <span style={{
                 fontSize: '16px',
                 fontWeight: '500',
@@ -558,7 +467,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
           </div>
         </div>
         
-        {/* Score and XP Progress bars */}
+        {/* Score Progress bar */}
         <div style={{
           marginBottom: '20px',
           backgroundColor: 'rgba(26, 10, 26, 0.7)',
@@ -567,44 +476,16 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
           border: '1px solid #333'
         }}>
-          {/* Score Progress */}
           <div style={{
             fontSize: '14px',
             color: '#BBB',
             marginBottom: '8px'
           }}>
-            Score: {this.myInternalState.currentScore} / 50
+            Score Progress
           </div>
           <div style={{
             position: 'relative',
-            height: '20px',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            borderRadius: '0px',
-            overflow: 'hidden',
-            marginBottom: '16px',
-            border: '1px solid #333'
-          }}>
-            <div style={{
-              height: '100%',
-              width: `${(this.myInternalState.currentScore / 50) * 100}%`,
-              background: `linear-gradient(90deg, #4A148C 0%, #6A1B9A 20%, #9C27B0 40%, #E91E63 60%, #F50057 80%, #FF4081 100%)`,
-              transition: 'width 0.8s ease',
-              borderRadius: '0px',
-              boxShadow: `0 0 10px ${statusColor}60`
-            }} />
-          </div>
-          
-          {/* XP Progress */}
-          <div style={{
-            fontSize: '14px',
-            color: '#BBB',
-            marginBottom: '8px'
-          }}>
-            XP: {xpForCurrentLevel} / {xpNeededInCurrentLevel}
-          </div>
-          <div style={{
-            position: 'relative',
-            height: '20px',
+            height: '24px',
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
             borderRadius: '0px',
             overflow: 'hidden',
@@ -613,7 +494,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
           }}>
             <div style={{
               height: '100%',
-              width: `${percentage}%`,
+              width: `${(currentScore / 50) * 100}%`,
               background: `linear-gradient(90deg, #4A148C 0%, #6A1B9A 20%, #9C27B0 40%, #E91E63 60%, #F50057 80%, #FF4081 100%)`,
               transition: 'width 0.8s ease',
               borderRadius: '0px',
@@ -626,9 +507,11 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
             fontSize: '14px',
             color: '#BBB'
           }}>
-            <span>Level {currentLevel}</span>
-            <span style={{ color: isNSFWUnlocked ? '#E91E63' : '#BBB' }}>Level 5 (NSFW)</span>
-            <span>Level {Math.min(currentLevel + 1, 23)}</span>
+            <span>Zero</span>
+            <span>Neutral</span>
+            <span>Interested</span>
+            <span style={{ color: isNSFWUnlocked ? '#E91E63' : '#BBB' }}>Attracted (NSFW)</span>
+            <span>Intimate</span>
           </div>
         </div>
       </div>
