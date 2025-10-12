@@ -31,29 +31,29 @@ type ConfigType = {
 
 // Level progression data - fixed to match your philosophy
 const LEVEL_THRESHOLDS = [
-  { level: 1, xpRequired: 0 },      // Start at 0 XP
-  { level: 2, xpRequired: 50 },     // Level 1-3: First Impressions (50 XP per level)
-  { level: 3, xpRequired: 100 },    // Level 2: 50 XP
-  { level: 4, xpRequired: 150 },    // Level 3: 50 XP
-  { level: 5, xpRequired: 225 },    // Level 4-5: Building Connection (75 XP per level)
-  { level: 6, xpRequired: 350 },    // Level 5: 125 XP
-  { level: 7, xpRequired: 450 },    // Level 6-10: Deepening Friendship (100 XP per level)
-  { level: 8, xpRequired: 550 },
-  { level: 9, xpRequired: 650 },
-  { level: 10, xpRequired: 750 },
-  { level: 11, xpRequired: 900 },   // Level 11-15: Emotional Intimacy (150 XP per level)
-  { level: 12, xpRequired: 1050 },
-  { level: 13, xpRequired: 1200 },
-  { level: 14, xpRequired: 1350 },
-  { level: 15, xpRequired: 1500 },
-  { level: 16, xpRequired: 1700 },  // Level 16-20: Romantic Bond (200 XP per level)
-  { level: 17, xpRequired: 1900 },
-  { level: 18, xpRequired: 2100 },
-  { level: 19, xpRequired: 2300 },
-  { level: 20, xpRequired: 2500 },
-  { level: 21, xpRequired: 2750 },  // Level 21-23+: Complete Acceptance (250+ XP per level)
-  { level: 22, xpRequired: 3000 },
-  { level: 23, xpRequired: 3250 },
+  { level: 1, xpRequired: 0, xpInLevel: 50 },      // Start at 0 XP, 50 XP needed for level 1
+  { level: 2, xpRequired: 50, xpInLevel: 50 },     // Level 1-3: First Impressions (50 XP per level)
+  { level: 3, xpRequired: 100, xpInLevel: 50 },    // Level 2: 50 XP
+  { level: 4, xpRequired: 150, xpInLevel: 50 },    // Level 3: 50 XP
+  { level: 5, xpRequired: 200, xpInLevel: 75 },    // Level 4-5: Building Connection (75 XP per level)
+  { level: 6, xpRequired: 275, xpInLevel: 75 },    // Level 5: 75 XP
+  { level: 7, xpRequired: 375, xpInLevel: 100 },   // Level 6-10: Deepening Friendship (100 XP per level)
+  { level: 8, xpRequired: 475, xpInLevel: 100 },
+  { level: 9, xpRequired: 575, xpInLevel: 100 },
+  { level: 10, xpRequired: 675, xpInLevel: 100 },
+  { level: 11, xpRequired: 775, xpInLevel: 150 },  // Level 11-15: Emotional Intimacy (150 XP per level)
+  { level: 12, xpRequired: 925, xpInLevel: 150 },
+  { level: 13, xpRequired: 1075, xpInLevel: 150 },
+  { level: 14, xpRequired: 1225, xpInLevel: 150 },
+  { level: 15, xpRequired: 1375, xpInLevel: 150 },
+  { level: 16, xpRequired: 1525, xpInLevel: 200 }, // Level 16-20: Romantic Bond (200 XP per level)
+  { level: 17, xpRequired: 1725, xpInLevel: 200 },
+  { level: 18, xpRequired: 1925, xpInLevel: 200 },
+  { level: 19, xpRequired: 2125, xpInLevel: 200 },
+  { level: 20, xpRequired: 2325, xpInLevel: 200 },
+  { level: 21, xpRequired: 2525, xpInLevel: 250 }, // Level 21-23+: Complete Acceptance (250+ XP per level)
+  { level: 22, xpRequired: 2775, xpInLevel: 250 },
+  { level: 23, xpRequired: 3025, xpInLevel: 250 },
 ];
 
 // The main stage component
@@ -126,6 +126,12 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   getXPForCurrentLevel(currentLevel: number): number {
     const levelData = LEVEL_THRESHOLDS.find(l => l.level === currentLevel);
     return levelData ? levelData.xpRequired : 0;
+  }
+
+  // Get XP needed within the current level
+  getXPNeededInCurrentLevel(currentLevel: number): number {
+    const levelData = LEVEL_THRESHOLDS.find(l => l.level === currentLevel);
+    return levelData ? levelData.xpInLevel : 50;
   }
 
   async load(): Promise<Partial<LoadResponse<InitStateType, ChatStateType, MessageStateType>>> {
@@ -357,10 +363,9 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     
     // Calculate XP progress for current level
     const currentLevelXP = this.getXPForCurrentLevel(currentLevel);
-    const nextLevelXP = this.getXPForNextLevel(currentLevel);
+    const xpNeededInCurrentLevel = this.getXPNeededInCurrentLevel(currentLevel);
     const xpForCurrentLevel = totalXP - currentLevelXP;
-    const xpNeededForNextLevel = nextLevelXP - currentLevelXP;
-    const percentage = xpNeededForNextLevel > 0 ? (xpForCurrentLevel / xpNeededForNextLevel) * 100 : 100;
+    const percentage = xpNeededInCurrentLevel > 0 ? (xpForCurrentLevel / xpNeededInCurrentLevel) * 100 : 100;
     
     return (
       <div style={{
@@ -445,7 +450,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
             color: '#BBB',
             marginBottom: '8px'
           }}>
-            XP: {xpForCurrentLevel} / {xpNeededForNextLevel}
+            XP: {xpForCurrentLevel} / {xpNeededInCurrentLevel}
           </div>
           <div style={{
             position: 'relative',
