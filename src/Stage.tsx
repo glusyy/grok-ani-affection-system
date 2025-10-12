@@ -4,10 +4,9 @@ import {LoadResponse} from "@chub-ai/stages-ts/dist/types/load";
 
 // Define our state types
 type InitStateType = {
-  currentXP: number;
+  totalXP: number;
   currentLevel: number;
   isNSFWUnlocked: boolean;
-  totalXP: number;
 };
 
 type MessageStateType = {
@@ -30,29 +29,29 @@ type ConfigType = {
   maxHistoryItems: number;
 };
 
-// Level progression data
+// Level progression data - updated to match your philosophy
 const LEVEL_THRESHOLDS = [
-  { level: 1, xpRequired: 0 },
-  { level: 2, xpRequired: 50 },
+  { level: 1, xpRequired: 0 },      // Start at 0 XP
+  { level: 2, xpRequired: 50 },     // Level 1-3: First Impressions (50 XP per level)
   { level: 3, xpRequired: 100 },
-  { level: 4, xpRequired: 175 },
-  { level: 5, xpRequired: 250 },  // NSFW unlocks here
-  { level: 6, xpRequired: 350 },
+  { level: 4, xpRequired: 175 },    // Level 4-5: Building Connection (75 XP per level)
+  { level: 5, xpRequired: 250 },    // NSFW unlocks here
+  { level: 6, xpRequired: 350 },    // Level 6-10: Deepening Friendship (100 XP per level)
   { level: 7, xpRequired: 450 },
   { level: 8, xpRequired: 550 },
   { level: 9, xpRequired: 650 },
   { level: 10, xpRequired: 750 },
-  { level: 11, xpRequired: 850 },
-  { level: 12, xpRequired: 1000 },
-  { level: 13, xpRequired: 1150 },
-  { level: 14, xpRequired: 1300 },
+  { level: 11, xpRequired: 900 },   // Level 11-15: Emotional Intimacy (150 XP per level)
+  { level: 12, xpRequired: 1050 },
+  { level: 13, xpRequired: 1200 },
+  { level: 14, xpRequired: 1350 },
   { level: 15, xpRequired: 1500 },
-  { level: 16, xpRequired: 1700 },
+  { level: 16, xpRequired: 1700 },  // Level 16-20: Romantic Bond (200 XP per level)
   { level: 17, xpRequired: 1900 },
   { level: 18, xpRequired: 2100 },
   { level: 19, xpRequired: 2300 },
   { level: 20, xpRequired: 2500 },
-  { level: 21, xpRequired: 2750 },
+  { level: 21, xpRequired: 2750 },  // Level 21-23+: Complete Acceptance (250+ XP per level)
   { level: 22, xpRequired: 3000 },
   { level: 23, xpRequired: 3250 },
 ];
@@ -65,10 +64,9 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   
   // Internal state for the component
   myInternalState: {
-    currentXP: number;
+    totalXP: number;
     currentLevel: number;
     isNSFWUnlocked: boolean;
-    totalXP: number;
     interactionHistory: Array<{
       message: string;
       scoreChange: number;
@@ -93,16 +91,14 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     } = data;
     
     // Initialize with default values if not provided
-    const initialXP = initState?.currentXP || 0;
-    const initialLevel = initState?.currentLevel || 1;
-    const isNSFWUnlocked = initState?.isNSFWUnlocked || false;
     const totalXP = initState?.totalXP || 0;
+    const currentLevel = initState?.currentLevel || 1;
+    const isNSFWUnlocked = initState?.isNSFWUnlocked || false;
     
     this.myInternalState = {
-      currentXP: initialXP,
-      currentLevel: initialLevel,
-      isNSFWUnlocked: isNSFWUnlocked,
       totalXP: totalXP,
+      currentLevel: currentLevel,
+      isNSFWUnlocked: isNSFWUnlocked,
       interactionHistory: chatState?.interactionHistory || []
     };
   }
@@ -135,10 +131,9 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   async load(): Promise<Partial<LoadResponse<InitStateType, ChatStateType, MessageStateType>>> {
     // If we have saved state, restore it
     if (this.initialData.initState) {
-      this.myInternalState.currentXP = this.initialData.initState.currentXP || 0;
+      this.myInternalState.totalXP = this.initialData.initState.totalXP || 0;
       this.myInternalState.currentLevel = this.initialData.initState.currentLevel || 1;
       this.myInternalState.isNSFWUnlocked = this.initialData.initState.isNSFWUnlocked || false;
-      this.myInternalState.totalXP = this.initialData.initState.totalXP || 0;
     }
     
     if (this.initialData.chatState && this.initialData.chatState.interactionHistory) {
@@ -149,10 +144,9 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       success: true,
       error: null,
       initState: {
-        currentXP: this.myInternalState.currentXP,
+        totalXP: this.myInternalState.totalXP,
         currentLevel: this.myInternalState.currentLevel,
-        isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
-        totalXP: this.myInternalState.totalXP
+        isNSFWUnlocked: this.myInternalState.isNSFWUnlocked
       },
       chatState: {
         interactionHistory: this.myInternalState.interactionHistory
@@ -162,14 +156,14 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
 
   async setState(state: MessageStateType): Promise<void> {
     if (state != null) {
-      this.myInternalState.currentXP = state.previousXP;
+      this.myInternalState.totalXP = state.previousXP;
       this.myInternalState.currentLevel = state.previousLevel;
     }
   }
 
   async beforePrompt(userMessage: Message): Promise<Partial<StageResponse<ChatStateType, MessageStateType>>> {
     const { content } = userMessage;
-    const previousXP = this.myInternalState.currentXP;
+    const previousXP = this.myInternalState.totalXP;
     const previousLevel = this.myInternalState.currentLevel;
     
     // Analyze the user message to determine XP change
@@ -229,7 +223,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     // Calculate new total XP and current level
     const newTotalXP = Math.max(0, this.myInternalState.totalXP + xpChange);
     const newLevel = this.calculateLevel(newTotalXP);
-    const newCurrentXP = newTotalXP - this.getXPForCurrentLevel(newLevel);
     
     // Check if NSFW should be unlocked
     let isNSFWUnlocked = this.myInternalState.isNSFWUnlocked;
@@ -238,10 +231,9 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     }
     
     // Update internal state
-    this.myInternalState.currentXP = newCurrentXP;
+    this.myInternalState.totalXP = newTotalXP;
     this.myInternalState.currentLevel = newLevel;
     this.myInternalState.isNSFWUnlocked = isNSFWUnlocked;
-    this.myInternalState.totalXP = newTotalXP;
     
     // Update the interaction history
     const newHistoryItem = {
@@ -299,7 +291,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
     // Make sure we're saving the current state
     return {
       messageState: {
-        previousXP: this.myInternalState.currentXP,
+        previousXP: this.myInternalState.totalXP,
         previousLevel: this.myInternalState.currentLevel,
         lastChange: 0,
         lastInteractionType: 'neutral'
@@ -312,7 +304,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
 
   render(): ReactElement {
     const currentLevel = this.myInternalState.currentLevel;
-    const currentXP = this.myInternalState.currentXP;
     const totalXP = this.myInternalState.totalXP;
     const isNSFWUnlocked = this.myInternalState.isNSFWUnlocked;
     
