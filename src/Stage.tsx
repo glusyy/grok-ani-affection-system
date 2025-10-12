@@ -420,15 +420,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       }
     }
     
-    // Save state using the saveState method
-    this.saveState({
-      currentLevel: this.myInternalState.currentLevel,
-      currentState: this.myInternalState.currentState,
-      isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
-      totalXP: this.myInternalState.totalXP,
-      currentScore: this.myInternalState.currentScore
-    });
-    
     return {
       messageState: {
         previousLevel: previousLevel,
@@ -444,15 +435,6 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
   }
 
   async afterResponse(botMessage: Message): Promise<Partial<StageResponse<ChatStateType, MessageStateType>>> {
-    // Save state using the saveState method
-    this.saveState({
-      currentLevel: this.myInternalState.currentLevel,
-      currentState: this.myInternalState.currentState,
-      isNSFWUnlocked: this.myInternalState.isNSFWUnlocked,
-      totalXP: this.myInternalState.totalXP,
-      currentScore: this.myInternalState.currentScore
-    });
-    
     return {
       messageState: {
         previousLevel: this.myInternalState.currentLevel,
