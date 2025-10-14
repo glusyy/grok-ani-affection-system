@@ -614,7 +614,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
             <div style={{
               height: '100%',
               width: `${percentage}%`,
-              background: `linear-gradient(90deg, rgba(74, 20, 140, 0.6) 0%, rgba(106, 27, 154, 0.6) 20%, rgba(156, 39, 176, 0.6) 40%, rgba(233, 30, 99, 0.6) 60%, rgba(245, 0, 87, 0.6) 80%, rgba(255, 64, 129, 0.6) 100%)`,
+              background: `linear-gradient(90deg, rgba(74, 20, 140, 0.2) 0%, rgba(106, 27, 154, 0.2) 20%, rgba(156, 39, 176, 0.2) 40%, rgba(233, 30, 99, 0.2) 60%, rgba(245, 0, 87, 0.2) 80%, rgba(255, 64, 129, 0.2) 100%)`,
               transition: 'width 0.8s ease',
               borderRadius: '0px',
               boxShadow: `0 0 10px ${statusColor}60`
