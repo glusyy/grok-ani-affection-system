@@ -521,7 +521,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
       <div style={{
         width: '100%',
         height: '100%',
-        padding: '16px',
+        padding: '8px', // Reduced from 16px
         fontFamily: 'Cinzel, serif',
         background: 'transparent',
         display: 'flex',
@@ -533,23 +533,23 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          marginBottom: '20px',
+          marginBottom: '12px', // Reduced from 20px
           backgroundColor: 'rgba(26, 10, 26, 0.7)',
-          padding: '16px',
+          padding: '10px', // Reduced from 16px
           borderRadius: '0px',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
           border: '1px solid #333'
         }}>
           <div style={{
-            width: '70px',
-            height: '70px',
+            width: '50px', // Reduced from 70px
+            height: '50px', // Reduced from 70px
             borderRadius: '50%',
             backgroundColor: avatarBg,
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            marginRight: '16px',
-            fontSize: '36px',
+            marginRight: '12px', // Reduced from 16px
+            fontSize: '24px', // Reduced from 36px
             color: statusColor,
             fontWeight: 'bold',
             border: `2px solid ${statusColor}`,
@@ -559,9 +559,9 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
           </div>
           <div style={{ flex: 1 }}>
             <h3 style={{
-              margin: '0 0 4px 0',
+              margin: '0 0 2px 0', // Reduced from 4px
               color: '#E0E0E0',
-              fontSize: '20px',
+              fontSize: '16px', // Reduced from 20px
               fontWeight: '600',
               textShadow: '0 0 10px rgba(233, 30, 99, 0.5)'
             }}>Ani's Affection</h3>
@@ -570,14 +570,14 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
               alignItems: 'center'
             }}>
               <span style={{
-                fontSize: '32px',
+                fontSize: '24px', // Reduced from 32px
                 fontWeight: 'bold',
                 color: statusColor,
-                marginRight: '8px',
+                marginRight: '6px', // Reduced from 8px
                 textShadow: `0 0 10px ${statusColor}80`
               }}>Level {currentLevel}</span>
               <span style={{
-                fontSize: '16px',
+                fontSize: '14px', // Reduced from 16px
                 fontWeight: '500',
                 color: statusColor,
                 textShadow: `0 0 8px ${statusColor}60`
@@ -588,33 +588,33 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
         
         {/* XP Progress bar */}
         <div style={{
-          marginBottom: '20px',
+          marginBottom: '12px', // Reduced from 20px
           backgroundColor: 'rgba(26, 10, 26, 0.7)',
-          padding: '16px',
+          padding: '10px', // Reduced from 16px
           borderRadius: '0px',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
           border: '1px solid #333'
         }}>
           <div style={{
-            fontSize: '14px',
+            fontSize: '12px', // Reduced from 14px
             color: '#BBB',
-            marginBottom: '8px'
+            marginBottom: '6px' // Reduced from 8px
           }}>
             XP: {xpForCurrentLevel} / {xpNeededInCurrentLevel}
           </div>
           <div style={{
             position: 'relative',
-            height: '24px',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            height: '18px', // Reduced from 24px
+            backgroundColor: 'rgba(0, 0, 0, 0.2)', // More transparent
             borderRadius: '0px',
             overflow: 'hidden',
-            marginBottom: '8px',
+            marginBottom: '6px', // Reduced from 8px
             border: '1px solid #333'
           }}>
             <div style={{
               height: '100%',
               width: `${percentage}%`,
-              background: `linear-gradient(90deg, rgba(74, 20, 140, 0.2) 0%, rgba(106, 27, 154, 0.2) 20%, rgba(156, 39, 176, 0.2) 40%, rgba(233, 30, 99, 0.2) 60%, rgba(245, 0, 87, 0.2) 80%, rgba(255, 64, 129, 0.2) 100%)`,
+              background: `linear-gradient(90deg, rgba(74, 20, 140, 0.6) 0%, rgba(106, 27, 154, 0.6) 20%, rgba(156, 39, 176, 0.6) 40%, rgba(233, 30, 99, 0.6) 60%, rgba(245, 0, 87, 0.6) 80%, rgba(255, 64, 129, 0.6) 100%)`,
               transition: 'width 0.8s ease',
               borderRadius: '0px',
               boxShadow: `0 0 10px ${statusColor}60`
@@ -623,7 +623,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
-            fontSize: '14px',
+            fontSize: '12px', // Reduced from 14px
             color: '#BBB'
           }}>
             <span>Level {currentLevel}</span>
