@@ -627,7 +627,7 @@ export class Stage extends StageBase<InitStateType, ChatStateType, MessageStateT
             color: '#BBB'
           }}>
             <span>Level {currentLevel}</span>
-            <span style={{ color: isNSFWUnlocked ? '#E91E63' : '#BBB' }}>Level 5 (NSFW)</span>
+            <span style={{ color: isNSFWUnlocked ? '#E91E63' : '#BBB' }}></span>
             <span>Level {Math.min(currentLevel + 1, 23)}</span>
           </div>
         </div>
